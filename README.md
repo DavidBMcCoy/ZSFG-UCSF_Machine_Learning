@@ -13,18 +13,33 @@ Our department has a number of projects aimed at exploring the uses of artificia
 The tools and paths to scripts are formatted by the following: 
 
 ### _Images_2D_
-* Classification
-  * Binary Outcome
-    * dfdaf
-  * Multi-class outcome
-* Segmentation (Based on U-net)
-  * Binary Mask 
-  * Multi-class mask
+* Supervised Classification
+  * Binary or Multi-class outcome
+    * Main-path convolutional networks
+    * Residual neural networks 
+    * Inception networks
+    * Dense networks
+* Supervised Segmentation
+  * Binary or Multi-class outcome
+    * U-net models
+    * Autoencoders
 ### _Images_3D_
 * Classification
+  * Binary or Multi-class outcome
+    * Main-path convolutional networks
+    * Residual neural networks 
+    * Inception networks
+    * Dense networks
 * Segmentation
+  * Binary or Multi-class outcome
+    * U-net models
+    * Autoencoders
+* Denoising 
+    * 
 ### _Dimensional_Reduction_
 * t-Distributed Stochastic Neighbor Embedding (t-SNE)
+* Principle Componenent Analysis (PCA)
+
 -
 ### _Natural Language Processing_
 -
