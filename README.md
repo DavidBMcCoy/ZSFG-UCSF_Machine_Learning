@@ -12,24 +12,24 @@ Our department has a number of projects aimed at exploring the uses of artificia
 ## Table of Contents: 
 The tools and paths to scripts are formatted by the following: 
 
-### Images_2D
+### _Images_2D_
 -
 -
-### Images_3D
+### _Images_3D_
 -
 -
-### Dimensional_Reduction
+### _Dimensional_Reduction_
 -
 -
-### Natural Language Processing
--
--
-
-### Supervised_Machine_Learning
+### _Natural Language Processing_
 -
 -
 
-### Unsupervised_Machine_Learning
+### _Supervised Machine Learning_
+-
+-
+
+### _Unsupervised Machine Learning_
 -
 -
 
