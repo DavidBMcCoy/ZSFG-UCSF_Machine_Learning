@@ -27,6 +27,7 @@ Layout of this repository is broken down as follows:
     * Auto-encoders 
 * Generative models
     * Variational auto-encoders
+    * Generative adverserial networks (GANs) 
 * Unsupervised Clustering
     * Variational auto-encoders -> t-SNE clustering of the latent space to 2/3D
 ### _Dimensional_Reduction_
@@ -36,14 +37,14 @@ Layout of this repository is broken down as follows:
 
 -
 ### _Natural Language Processing_
--
--
+*
+*
 
 ### _Supervised Machine Learning_
--
--
+*
+*
 
 ### _Unsupervised Machine Learning_
--
--
+*
+*
 
