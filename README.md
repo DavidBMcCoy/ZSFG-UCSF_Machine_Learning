@@ -14,8 +14,8 @@ The tools and paths to scripts are formatted by the following:
 
 ### _Images_2D_
 -Classification
-  -Binary Outcome
-  -Multi-class outcome
+  * Binary Outcome
+  * Multi-class outcome
 -Segmentation
 ### _Images_3D_
 -Classification
