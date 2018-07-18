@@ -13,13 +13,15 @@ Our department has a number of projects aimed at exploring the uses of artificia
 The tools and paths to scripts are formatted by the following: 
 
 ### _Images_2D_
--
--
+-Classification
+  -Binary Outcome
+  -Multi-class outcome
+-Segmentation
 ### _Images_3D_
--
--
+-Classification
+-Segmentation
 ### _Dimensional_Reduction_
--
+-t-Distributed Stochastic Neighbor Embedding (t-SNE)
 -
 ### _Natural Language Processing_
 -
