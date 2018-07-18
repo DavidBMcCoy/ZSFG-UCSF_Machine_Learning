@@ -15,15 +15,16 @@ The tools and paths to scripts are formatted by the following:
 ### _Images_2D_
 * Classification
   * Binary Outcome
+    * dfdaf
   * Multi-class outcome
-* Segmentation
+* Segmentation (Based on U-net)
   * Binary Mask 
   * Multi-class mask
 ### _Images_3D_
--Classification
--Segmentation
+* Classification
+* Segmentation
 ### _Dimensional_Reduction_
--t-Distributed Stochastic Neighbor Embedding (t-SNE)
+* t-Distributed Stochastic Neighbor Embedding (t-SNE)
 -
 ### _Natural Language Processing_
 -
