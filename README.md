@@ -13,10 +13,12 @@ Our department has a number of projects aimed at exploring the uses of artificia
 The tools and paths to scripts are formatted by the following: 
 
 ### _Images_2D_
--Classification
+* Classification
   * Binary Outcome
   * Multi-class outcome
--Segmentation
+* Segmentation
+  * Binary Mask 
+  * Multi-class mask
 ### _Images_3D_
 -Classification
 -Segmentation
