@@ -64,6 +64,6 @@ Currently, this repository is built such that each script is stand-alone. In the
 cd YOUR_DESIRED_PLACE_FOR_INSTALL
 git clone https://github.com/DavidBMcCoy/ZSFG-UCSF_Machine_Learning.git 
 ```
-
+No play data is provided. All deep learning scripts were built using diagnostic x-ray, CT, or MRI data from the Department of Public Health at ZSFG. However, detailed documentation are provided in each project folder to show how input data should be formatted. For example, scripts are provided to convert all DICOM data to NIFTI which then is loaded to HDF5 files in the tensorflow format (batch_size, x-dim, y-dim, z-dim, channels). Documentation is provided on how to format your data to work with all deep learning scripts (organizing your data so that the scripts provided and take stacks of DICOM and put them in one HDF5 file which will work with all deep learning scripts). 
 
 
