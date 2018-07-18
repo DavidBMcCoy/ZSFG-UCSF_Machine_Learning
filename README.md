@@ -12,7 +12,7 @@ Our department has a number of projects aimed at exploring the uses of artificia
 ## Table of Contents: 
 The tools and paths to scripts are formatted by the following: 
 
-### _Images_2D_
+### _Images_2D_ | _Images_3D_ 
 * Supervised Classification
   * Binary or Multi-class outcome
     * Main-path convolutional networks
@@ -22,20 +22,12 @@ The tools and paths to scripts are formatted by the following:
 * Supervised Segmentation
   * Binary or Multi-class outcome
     * U-net models
-    * Autoencoders
-### _Images_3D_
-* Classification
-  * Binary or Multi-class outcome
-    * Main-path convolutional networks
-    * Residual neural networks 
-    * Inception networks
-    * Dense networks
-* Segmentation
-  * Binary or Multi-class outcome
-    * U-net models
-    * Autoencoders
+    * Auto-encoders
 * Denoising 
-    * 
+    * Auto-encoders 
+* Generative models
+    * Variational auto-encoders
+* 
 ### _Dimensional_Reduction_
 * t-Distributed Stochastic Neighbor Embedding (t-SNE)
 * Principle Componenent Analysis (PCA)
