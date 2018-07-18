@@ -18,7 +18,7 @@ The tools and paths to scripts are formatted by the following:
 ###**Images_3D**
 -
 -
-###**Dimensional_Reduction**
+###Dimensional_Reduction
 -
 -
 ###**Natural_Language_Processing**
