@@ -7,7 +7,7 @@ Repository for machine learning scripts being developed at Zuckerberg San Franci
 MLT provides a number of scripts, written in python, utilizing high level application programming interfaces such as keras, tensorflow, and caffe to classify and segment both 2D and 3D medical images. The goal of this project is to provide relatively simple deep learning scripts to medical professionals, specifically radiologists, and researchers working in medical imaging. 
 
 ## Description:
-Our department has a number of projects aimed at exploring the uses of artificial intelligence (AI) in medical imaging. This repository holds all the AI scripts we have developed alongside documentation to help those new to AI explore its use in medical imaging to improve healthcare. Furthermore, because our work-flow is comprised of first using natural language processing to classify radiology reports in order to apply labels to images, included here are scripts for applying labels to reporting text. Similarly, 
+Our department has a number of projects aimed at exploring the uses of artificial intelligence (AI) in medical imaging. This repository holds all the AI scripts we have developed alongside documentation to help those new to AI explore its use in medical imaging to improve healthcare. Furthermore, because our work-flow is comprised of first using natural language processing to classify radiology reports in order to apply labels to images, included here are scripts for applying labels to reporting text. Similarly, we have developed many other scripts for dimensional reduction/machine learning in dealing with high dimensional data, these are also provided with documentation. 
 
 ## Table of Contents: 
 Layout of this repository is broken down as follows: 
@@ -33,7 +33,9 @@ Layout of this repository is broken down as follows:
 ### _Dimensional_Reduction_
 * t-Distributed Stochastic Neighbor Embedding (t-SNE)
 * Principle Componenent Analysis (PCA)
-* 
+* Factor Analysis 
+* Decision Trees (cART) 
+* Backwards Feature Elimination (RFE)
 
 -
 ### _Natural Language Processing_
