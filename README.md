@@ -57,3 +57,13 @@ Layout of this repository is broken down as follows:
 * K-means clustering
 * Hierarchical Agglomerative Clustering
 
+## Using MLT:
+Currently, this repository is built such that each script is stand-alone. In the future, we plan on making these sets a complete API. For the time being, simply clone this repository to your local machine to easily access the scripts for use in your own research: 
+
+```
+cd YOUR_DESIRED_PLACE_FOR_INSTALL
+git clone https://github.com/DavidBMcCoy/ZSFG-UCSF_Machine_Learning.git 
+```
+
+
+
