@@ -36,17 +36,14 @@ Layout of this repository is broken down as follows:
 * Factor Analysis 
 * Decision Trees (cART) 
 * Backwards Feature Elimination (RFE)
-
--
 ### _Natural Language Processing_
-*
-*
+* Bag of words text reduction -> ensemble machine learning methods
 
 ### _Supervised Machine Learning_
-*
-*
-
+* Elastic-net regression 
+* Support vector machines
+* Regressions 
 ### _Unsupervised Machine Learning_
-*
-*
+* K-means clustering
+* Hierarchical Agglomerative Clustering
 
