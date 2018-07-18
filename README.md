@@ -10,12 +10,14 @@ MLT provides a number of scripts, written in python, utilizing high level applic
 Our department has a number of projects aimed at exploring the uses of artificial intelligence (AI) in medical imaging. This repository holds all the AI scripts we have developed alongside documentation to help those new to AI explore its use in medical imaging to improve healthcare. Furthermore, because our work-flow is comprised of first using natural language processing to classify radiology reports in order to apply labels to images, included here are scripts for applying labels to reporting text. Similarly, we have developed many other scripts for dimensional reduction/machine learning in dealing with high dimensional data, these are also provided with documentation. 
 
 ## Citing this repository
-`@article{mccoyd2018,
+```
+@article{mccoyd2018,
   title={Machine Learning Toolbox: A repository of machine learning programs for medical image processing},
   author={David B. McCoy},
   journal={},
   year={2018}
-}`
+}
+```
 ## Table of Contents: 
 Layout of this repository is broken down as follows: 
 
