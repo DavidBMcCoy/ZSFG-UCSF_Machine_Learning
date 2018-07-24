@@ -36,7 +36,7 @@ from keras.utils import multi_gpu_model
 from keras.callbacks import ModelCheckpoint
 from keras import optimizers
 
-import Vol_VAE_utils
+import Vol_VAE_Utils
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -67,7 +67,7 @@ IMAGE_DEPTH = 40
 INTPUT_SHAPE = (IMAGE_SIZE, IMAGE_SIZE, IMAGE_DEPTH, 1)
 BATCH_SIZE = 3
 KERNAL_SIZE = 3
-LATENT_DIM = 200
+LATENT_DIM = 50
 EPOCHS = 100
 KEEP_PROB = 0.6
 
@@ -109,11 +109,11 @@ def plot_result_history(model_name="Conv3DVAE_hemorrhage_test"):
     # summarize history for accuracy
     plt.plot(history['loss'])
     plt.plot(history['val_loss'])
-    plt.title('model loss by epoch')
+    plt.title('model reconstruction loss by epoch')
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['train', 'validation'], loc='upper left')
-    plt.savefig(filename+'/VAE_history.png')
+    plt.savefig(MODEL_RESULTS_PATH+'/VAE_history.png')
     plt.show()
 
 
@@ -200,7 +200,7 @@ def load_valid_data_full():
     images_valid = np.array(hdf5_file_valid["valid_img"][:])  # your test set features
     labels_valid = np.array(hdf5_file_valid["valid_labels"][:])  # your test set labels
     acns_valid = np.array(hdf5_file_valid["valid_acns"][:])
-    labels_valid = Vol_VAE_utils.convert_to_one_hot(labels_valid, 2).T
+    labels_valid = Vol_VAE_Utils.convert_to_one_hot(labels_valid, 2).T
 
     return images_valid, labels_valid, data_num_valid
 
@@ -215,7 +215,7 @@ def load_test_data_full():
     data_num_test = hdf5_file_test["test_img"].shape[0]
     images_test = np.array(hdf5_file_test["test_img"][:])  # your test set features
     labels_test = np.array(hdf5_file_test["test_labels"][:])  # your test set labels
-    labels_test = Vol_VAE_utils.convert_to_one_hot(labels_test, 2).T
+    labels_test = Vol_VAE_Utils.convert_to_one_hot(labels_test, 2).T
 
     return images_test, labels_test, data_num_test
 
@@ -344,3 +344,9 @@ with open(BASE_PATH + 'history/trainHistoryDict', 'wb') as file_pi:
     pickle.dump(vae_history.history, file_pi)
 
 plot_results(models, data=[images_test, labels_test], batch_size=BATCH_SIZE, model_name="Conv3DVAE_hemorrhage", plot=1)
+
+
+encoder.save(BASE_PATH+'/weights_models/encoder_100epochs.h5')
+decoder.save(BASE_PATH+'/weights_models/decoder_100epochs.h5')
+
+
