@@ -206,6 +206,7 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
                                                           labels_valid=labels_valid, callback=best_wts_callback)
 
 
+### changes to pull on msi
 
 
 
