@@ -526,14 +526,14 @@ def generator(features, labels, batch_size):
 
 
 ## run create master
-master_list, failed_nifti_conv_subjects = create_master_list()
-master_list = load_master_list()
-train, valid, test = get_filenames(master_list, initial_exam = 0)
-##run save dataset
-save_dataset(train, 'train',256, 256, 40)
-save_dataset(valid, 'valid',256, 256, 40)
-save_dataset(test, 'test', 256, 256, 40)
-train_set_x_orig, train_set_y_orig, valid_set_x_orig, valid_set_y_orig, test_set_x_orig, test_set_y_orig = load_hdf5_total_dataset()
-X_train, X_valid, X_test, Y_train, Y_valid, Y_test = preprocess_data()
-
-
+# master_list, failed_nifti_conv_subjects = create_master_list()
+# master_list = load_master_list()
+# train, valid, test = get_filenames(master_list, initial_exam = 0)
+# ##run save dataset
+# save_dataset(train, 'train',256, 256, 40)
+# save_dataset(valid, 'valid',256, 256, 40)
+# save_dataset(test, 'test', 256, 256, 40)
+# train_set_x_orig, train_set_y_orig, valid_set_x_orig, valid_set_y_orig, test_set_x_orig, test_set_y_orig = load_hdf5_total_dataset()
+# X_train, X_valid, X_test, Y_train, Y_valid, Y_test = preprocess_data()
+#
+#

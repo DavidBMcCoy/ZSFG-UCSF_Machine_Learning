@@ -109,13 +109,14 @@ def denseblock_altern(x, concat_axis, nb_layers, nb_filter, growth_rate, dropout
     return x, nb_filter
 
 
-def DenseNet(nb_classes, img_dim, depth, nb_dense_block, growth_rate, nb_filter, dropout_rate=None, weight_decay=1E-4, activation):
+def DenseNet(nb_classes, img_dim, depth, nb_dense_block, growth_rate, activation, nb_filter, dropout_rate=None, weight_decay=1E-4):
     """ Build the DenseNet model
     :param nb_classes: int -- number of classes
     :param img_dim: tuple -- (channels, rows, columns)
     :param depth: int -- how many layers
     :param nb_dense_block: int -- number of dense blocks to add to end
     :param growth_rate: int -- number of filters to add
+    :param activation: str -- type of activation to use in densenet
     :param nb_filter: int -- number of filters
     :param dropout_rate: float -- dropout rate
     :param weight_decay: float -- weight decay
@@ -139,11 +140,10 @@ def DenseNet(nb_classes, img_dim, depth, nb_dense_block, growth_rate, nb_filter,
     x = Conv3D(nb_filter, (3, 3, 3), kernel_initializer="he_uniform", padding="same", name="initial_conv3D", use_bias=False, kernel_regularizer=l2(weight_decay))(model_input)
 
     # Add dense blocks
-
     for block_idx in range(nb_dense_block - 1):
         x, nb_filter = dense_block(x, concat_axis, nb_layers, nb_filter, growth_rate, dropout_rate=dropout_rate, weight_decay=weight_decay)
         # add transition
-        x = bottle_neck(x, nb_filter, dropout_rate=dropout_rate, weight_decay=weight_decay)
+        x = bottle_neck(x=x, concat_axis=concat_axis, nb_filter=nb_filter, dropout_rate=dropout_rate, weight_decay=weight_decay)
 
     # The last denseblock does not have a transition
     x, nb_filter = dense_block(x, concat_axis, nb_layers, nb_filter, growth_rate, dropout_rate=dropout_rate, weight_decay=weight_decay)

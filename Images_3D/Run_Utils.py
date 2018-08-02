@@ -24,34 +24,33 @@ from keras.models import load_model
 from keras.utils import plot_model
 from sklearn.metrics import roc_curve, auc
 import Image_Aug_3D_Utils
+import Preprocessing_Utils
 
 import random
 
-
-
-def load_valid_data_full():
+def load_valid_data_full(hdf5_path_valid):
     """
     load validation data from disk
     """
-    hdf5_file_valid = h5py.File(HDF5_PATH_VALID, "r")
+    hdf5_file_valid = h5py.File(hdf5_path_valid, "r")
     data_num_valid = hdf5_file_valid["valid_img"].shape[0]
     images_valid = np.array(hdf5_file_valid["valid_img"][:])  # your test set features
     labels_valid = np.array(hdf5_file_valid["valid_labels"][:])  # your test set labels
     acns_valid = np.array(hdf5_file_valid["valid_acns"][:])
-    labels_valid = vol_inception_utils.convert_to_one_hot(labels_valid, 2).T
+    labels_valid = Preprocessing_Utils.convert_to_one_hot(labels_valid, 2).T
 
     return images_valid, labels_valid, data_num_valid
 
 
-def load_test_data_full():
+def load_test_data_full(hdf5_path_test):
     """
     load validation data from disk
     """
-    hdf5_file_test = h5py.File(HDF5_PATH_TEST, "r")
+    hdf5_file_test = h5py.File(hdf5_path_test, "r")
     data_num_test = hdf5_file_test["test_img"].shape[0]
     images_test = np.array(hdf5_file_test["test_img"][:])  # your test set features
     labels_test = np.array(hdf5_file_test["test_labels"][:])  # your test set labels
-    labels_test = vol_inception_utils.convert_to_one_hot(labels_test, 2).T
+    labels_test = Preprocessing_Utils.convert_to_one_hot(labels_test, 2).T
 
     return images_test, labels_test, data_num_test
 
@@ -135,8 +134,10 @@ def report_counts(labels_valid, labels_test, data_num_test, data_num_valid):
 
 
 def generate_training_from_hdf5(
+        data_num_train,
+        hdf5_file_train,
         indices,
-        batch_size=BATCH_SIZE,
+        batch_size,
         image_aug=True,
         allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8),
         max_transformations=3,
@@ -159,24 +160,24 @@ def generate_training_from_hdf5(
     """
     while True:
         np.random.shuffle(indices)
-        for i in range(0, DATA_NUM_TRAIN, batch_size):
+        for i in range(0, data_num_train, batch_size):
             time_start_load_aug = datetime.datetime.now()
             # print("\n Current training index is: "+str(i)+'\n')
             # t0 = time()
             batch_indices = indices[i:i + batch_size]
             batch_indices.sort()
             # print("\n Batch indices: "+str(batch_indices))
-            images_train = HDF5_FILE_TRAIN["train_img"][batch_indices, ...]
-            labels_train = HDF5_FILE_TRAIN["train_labels"][batch_indices]
-            acns_train = HDF5_FILE_TRAIN["train_acns"][batch_indices, ...]
+            images_train = hdf5_file_train["train_img"][batch_indices, ...]
+            labels_train = hdf5_file_train["train_labels"][batch_indices]
+            acns_train = hdf5_file_train["train_acns"][batch_indices, ...]
             # images_valid = np.array(hdf5_file_valid["valid_img"][:]) # your test set features
             # labels_valid = np.array(hdf5_file_valid["valid_labels"][:]) # your test set labels
 
-            labels_train = vol_inception_utils.convert_to_one_hot(labels_train, 2).T
+            labels_train = Preprocessing_Utils.convert_to_one_hot(labels_train, 2).T
             # labels_valid = convert_to_one_hot(labels_valid, 2).T
 
             if image_aug:
-                images_train = vol_image_aug_v2.random_batch_augmentation(
+                images_train = Image_Aug_3D_Utils.random_batch_augmentation(
                     images_train,
                     allowed_transformations=allowed_transformations,
                     max_transformations=max_transformations)
@@ -533,14 +534,3 @@ def retrain_model_same_train():
         pickle.dump(history_inception_retrain.history, file_pi)
 
     return history_inception_retrain
-
-
-if __name__ == '__main__':
-    #split_train_hdf()
-     history = run_real_time_generator_model(data_aug=False)
-    #augment_training_data(TRAIN_INDICES, num_super_batches=NUM_SUPER_BATCH,
-    #                      allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7), max_transformations=3)
-    latd_generator = latd_generator(batch_size=BATCH_SIZE)
-    history_inception = run_cached_aug_data_model(noise_adaption=False)
-# history_inception_retrain = retrain_model_same_train()
-# pred_ground_truth, Accuracy, Precision, Recall, F1_Score, cm, fpr, tpr, thresholds, roc_auc = test_model()

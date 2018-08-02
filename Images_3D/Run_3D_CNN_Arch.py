@@ -17,12 +17,15 @@ import json
 import argparse
 import numpy as np
 import keras.backend as K
-from keras.utils import multi_gpu_model
 import keras
 import h5py
 
+from keras.utils import multi_gpu_model
+from keras.models import Model
 from keras.callbacks import ModelCheckpoint
+from math import ceil
 
+# custom imports
 import Run_Utils
 
 # Global variables that are unlikely to change between runs
@@ -30,67 +33,13 @@ GPUs = 2
 BASE_PATH = "/media/mccoyd2/hamburger/hemorrhage_study/"
 OVERFLOW_PATH = "/media/mccoyd2/spaghetti/"
 
-SUPER_BATCH_SIZE = 2000
-
-TRAIN_LENGTH = '14186'
-VALID_LENGTH = '1685'
-TEST_LENGTH = '2144'
-
-HDF5_PATH_TEMPLATE = BASE_PATH + 'tensors/{}_256x256x40_{}.hdf5'
-
-HDF5_PATH_TRAIN = HDF5_PATH_TEMPLATE.format("train", TRAIN_LENGTH)
-HDF5_PATH_VALID = HDF5_PATH_TEMPLATE.format("valid", VALID_LENGTH)
-HDF5_PATH_TEST = HDF5_PATH_TEMPLATE.format("test", TEST_LENGTH)
-
-HDF5_FILE_TRAIN = h5py.File(HDF5_PATH_TRAIN, "r")
-DATA_NUM_TRAIN = HDF5_FILE_TRAIN["train_img"].shape[0]
-TRAIN_INDICES = range(DATA_NUM_TRAIN)
-N_STEPS_PER_EPOCH_TRAIN = int(ceil(float(SUPER_BATCH_SIZE) / BATCH_SIZE))
-HDF5_FILE_TEST = h5py.File(HDF5_PATH_TEST, "r")
-DATA_NUM_TEST = HDF5_FILE_TEST["test_img"].shape[0]
-TEST_INDICES = range(DATA_NUM_TEST)
-N_STEPS_PER_EPOCH_TEST = int(ceil(float(DATA_NUM_TEST) / BATCH_SIZE))
-
-# we'll cache this many batches worth of augmented data in one file
-# NUM_SUPER_BATCH = ceil((float(TRAIN_LENGTH) / (BATCH_SIZE * SUPER_BATCH_SIZE)) * 2)
-NUM_SUPER_BATCH = 50
-AUGMENTED_DATA_PATH = OVERFLOW_PATH + 'augmented_training_cache/'
-ORIG_DATA_PATH = OVERFLOW_PATH + 'orig_training_cache/'
-
-AUGMENTED_DATA_TEMPLATE = AUGMENTED_DATA_PATH + 'super_batch_{}.hdf5'
-ORIG_DATA_TEMPLATE = ORIG_DATA_PATH + 'super_batch_{}.hdf5'
-
-AUGMENTED_DATA_IMAGE_NAME = 'images'
-AUGMENTED_DATA_LABEL_NAME = 'labels'
-
-ORIG_DATA_IMAGE_NAME = 'images'
-ORIG_DATA_LABEL_NAME = 'labels'
-ORIG_DATA_ACN_NAME = 'acns'
-ORIG_DATA_REPORTS_NAME = 'reports'
-ORIG_DATA_PATHS_NAME = 'paths'
 
 # this class makes it possible to save checkpoints while using multiple GPUS, which apparently is an issue with Keras...
 
 
-class ModelMGPU(Model):
-    def __init__(self, ser_model, gpus):
-        pmodel = multi_gpu_model(ser_model, gpus)
-        self.__dict__.update(pmodel.__dict__)
-        self._smodel = ser_model
-
-    def __getattribute__(self, attrname):
-        '''Override load and save methods to be used from the serial-model. The
-        serial-model holds references to the weights in the multi-gpu model.
-        '''
-        # return Model.__getattribute__(self, attrname)
-        if 'load' in attrname or 'save' in attrname:
-            return getattr(self._smodel, attrname)
-
-        return super(ModelMGPU, self).__getattribute__(attrname)
-
 
 def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filter, growth_rate, dropout_rate,
-               learning_rate, weight_decay, plot_architecture, model_path, check_point_name, data_aug):
+               learning_rate, weight_decay, plot_architecture, model_path, check_point_name, data_aug, base_path):
     """ Run 3d cnn
     :param model_arch: int -- number indicating which architecture to use as listed in help
     :param batch_size: int -- batch size
@@ -106,11 +55,65 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
     :param data_aug: int -- type of data augmentation to do
     """
 
-    images_valid, labels_valid, data_num_valid = Run_Utils.load_valid_data_full()
-    images_test, labels_test, data_num_test = Run_Utils.load_test_data_full()
+    hdf5_path =base_path + '/tensors/{}.hdf5'
 
-    img_dim = images_test.shape[1:]
-    nb_classes = len(np.unique(images_test))
+    hdf5_train = hdf5_path.format("train")
+    hdf5_valid = hdf5_path.format("valid")
+    hdf5_test = hdf5_path.format("test")
+
+    hdf5_file_train = h5py.File(hdf5_train, "r")
+    data_num_train = hdf5_file_train["train_img"].shape[0]
+    train_indices = range(data_num_train)
+
+    if data_aug == 2:
+        num_super_batch = 50
+        super_batch_size = 2000
+        n_steps_per_epoch_train = int(ceil(float(super_batch_size) / batch_size))
+
+    hdf_file_test = h5py.File(hdf5_test, "r")
+    data_num_test = hdf_file_test["test_img"].shape[0]
+    test_indices = range(data_num_test)
+    n_steps_per_epoch_test = int(ceil(float(data_num_test) / batch_size))
+
+    # we'll cache this many batches worth of augmented data in one file
+    # num_super_batch = ceil((float(TRAIN_LENGTH) / (BATCH_SIZE * SUPER_BATCH_SIZE)) * 2)
+    AUGMENTED_DATA_PATH = OVERFLOW_PATH + 'augmented_training_cache/'
+    ORIG_DATA_PATH = OVERFLOW_PATH + 'orig_training_cache/'
+
+    AUGMENTED_DATA_TEMPLATE = AUGMENTED_DATA_PATH + 'super_batch_{}.hdf5'
+    ORIG_DATA_TEMPLATE = ORIG_DATA_PATH + 'super_batch_{}.hdf5'
+
+    AUGMENTED_DATA_IMAGE_NAME = 'images'
+    AUGMENTED_DATA_LABEL_NAME = 'labels'
+
+    ORIG_DATA_IMAGE_NAME = 'images'
+    ORIG_DATA_LABEL_NAME = 'labels'
+    ORIG_DATA_ACN_NAME = 'acns'
+    ORIG_DATA_REPORTS_NAME = 'reports'
+    ORIG_DATA_PATHS_NAME = 'paths'
+
+
+    list_dir = [base_path+"./log", base_path +"./figures"]
+
+    for d in list_dir:
+        if not os.path.exists(d):
+            os.makedirs(d)
+
+
+    #####################################################################
+    # load in the validation and testing images which should fit in RAM #
+    #####################################################################
+
+
+    print('Loading validation and test sets, this will take a couple minutes')
+    #images_valid, labels_valid, data_num_valid = Run_Utils.load_valid_data_full(hdf5_valid)
+    #images_test, labels_test, data_num_test = Run_Utils.load_test_data_full(hdf5_test)
+
+    #img_dim = images_test.shape[1:]
+    #nb_classes = len(np.unique(images_test))
+
+    img_dim = (256, 256, 40, 1)
+    nb_classes = 2
 
     if nb_classes == 2:
         activation = 'sigmoid'
@@ -127,27 +130,42 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
 
     if model_arch == 1:
         import Main_Path_3D
-    elif model_arch == 2:
+    if model_arch == 2:
         import Resnets_3D
         model = Resnets_3D.resnet_50_3d(input_shape=img_dim, classes=nb_classes)
-    elif model_arch == 3:
+    if model_arch == 3:
         import Inception_Resnet
-        model = Inception_Resnet.create_inception_resnet(nb_classes=2, scale=True, noise_adaption=False, nlayer_b1=5,
-                                                         nlayer_b2=10, nlayer_b3=5)
-    elif model_arch == 4:
+        model = Inception_Resnet.create_inception_resnet(nb_classes=2, scale=True, noise_adaption=False, nlayer_b1=5, nlayer_b2=10, nlayer_b3=5)
+    if model_arch == 4:
         import DenseNet_3D
-        model = DenseNet_3D.DenseNet(nb_classes, img_dim, depth, nb_dense_block, growth_rate, nb_filter,
-                                     dropout_rate=dropout_rate, weight_decay=weight_decay, activation=activation)
+        model = DenseNet_3D.DenseNet(nb_classes=nb_classes, img_dim = img_dim, depth=depth, nb_dense_block=nb_dense_block, growth_rate=growth_rate, nb_filter=nb_filter,
+                                     dropout_rate=dropout_rate, weight_decay=weight_decay, activation = activation)
     else:
         raise ValueError('Number indicated is not part of the available models')
 
     # Model output
     model.summary()
 
-    if K.image_data_format() == "channels_first":
-        n_channels = images_test.shape[1]
-    else:
-        n_channels = images_test.shape[-1]
+    class ModelMGPU(Model):
+        def __init__(self, ser_model, gpus):
+            pmodel = multi_gpu_model(ser_model, gpus)
+            self.__dict__.update(pmodel.__dict__)
+            self._smodel = ser_model
+
+        def __getattribute__(self, attrname):
+            '''Override load and save methods to be used from the serial-model. The
+            serial-model holds references to the weights in the multi-gpu model.
+            '''
+            # return Model.__getattribute__(self, attrname)
+            if 'load' in attrname or 'save' in attrname:
+                return getattr(self._smodel, attrname)
+
+            return super(ModelMGPU, self).__getattribute__(attrname)
+
+    # if K.image_data_format() == "channels_first":
+    #     n_channels = images_test.shape[1]
+    # else:
+    #     n_channels = images_test.shape[-1]
 
     if GPUs >= 2:
         model_parallel = ModelMGPU(model, gpus=GPUs)
@@ -160,24 +178,44 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
                                         mode='min')
     model_parallel.compile(optimizer=Adam_opt, loss=loss, metrics=['accuracy'])
 
-
     if plot_architecture:
         from keras.utils.visualize_util import plot
         plot(model_parallel, to_file='./figures/densenet_archi.png', show_shapes=True)
 
-    ####################
-    # Network training #
-    ####################
+        ####################
+        # Network training #
+        ####################
 
         print("Training")
 
     if data_aug == 1:
-        history = Run_Utils.run_real_time_generator_model(data_aug=True, train_indices=train_indices, batch_size=batch_size, model=model,
-                                                          data_num_train=data_num_train, epochs=nb_epoch, images_valid=images_valid,
+        history = Run_Utils.run_real_time_generator_model(data_aug=True, train_indices=train_indices,
+                                                          batch_size=batch_size, model=model,
+                                                          data_num_train=data_num_train, epochs=nb_epoch,
+                                                          images_valid=images_valid,
+                                                          labels_valid=labels_valid, callback=best_wts_callback)
+    if data_aug == 2:
+        Run_Utils.augment_training_data(TRAIN_INDICES, num_super_batches=NUM_SUPER_BATCH,
+                           allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7), max_transformations=3)
+
+    if data_aug == 3:
+        history = Run_Utils.run_real_time_generator_model(data_aug=False, train_indices=train_indices,
+                                                          batch_size=batch_size, model=model,
+                                                          data_num_train=data_num_train, epochs=nb_epoch,
+                                                          images_valid=images_valid,
                                                           labels_valid=labels_valid, callback=best_wts_callback)
 
 
 
+
+
+# split_train_hdf()
+# history = run_real_time_generator_model(data_aug=False)
+#
+# latd_generator = latd_generator(batch_size=BATCH_SIZE)
+# history_inception = run_cached_aug_data_model(noise_adaption=False)
+# history_inception_retrain = retrain_model_same_train()
+# pred_ground_truth, Accuracy, Precision, Recall, F1_Score, cm, fpr, tpr, thresholds, roc_auc = test_model()
 
 
 
@@ -185,7 +223,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run a 3D convolutional network')
     parser.add_argument('--model_arch', type=int,
-                        help='Which architecture to use [select by number]: [1] MainPath, [2] Resnet, [3] Inception, [4] Densnet')
+                        help="Which architecture to use [select by number]: [1] MainPath, [2] Resnet, "
+                             "[3] Inception, [4] Densnet")
     parser.add_argument('--batch_size', default=10, type=int, help='Batch size')
     parser.add_argument('--nb_epoch', default=200, type=int, help='Number of epochs')
     parser.add_argument('--depth', type=int, default=7, help='Network depth')
@@ -199,21 +238,19 @@ if __name__ == '__main__':
     parser.add_argument('--model_path', type=str, help='path to where to save the model (no github)')
     parser.add_argument('--check_point_name', type=str,
                         help='name of the hdf5 file in which the model is saved based on validation acccuracy')
-    parser.add_argument('--data_aug', type=int, default=1, help='Type of augmentation 1. data aug = True and is done in '
-                                                                'real-time, 2. data aug = True but runs off of cached aug data, '
-                                                                '3. data aug is set to false')
+    parser.add_argument('--data_aug', type=int, default=1,
+                        help='Type of augmentation 1. data aug = True and is done in '
+                             'real-time, 2. data aug = True but runs off of cached aug data, '
+                             '3. data aug is set to false')
+    parser.add_argument('--base_path', type=str, help="path to directory where subfolder for data, "
+                                                      "models etc. are kept")
     args = parser.parse_args()
 
     print("Network configuration:")
     for name, value in parser.parse_args()._get_kwargs():
         print(name, value)
 
-    list_dir = ["./log", "./figures"]
-
-    for d in list_dir:
-        if not os.path.exists(d):
-            os.makedirs(d)
 
     run_3d_cnn(args.model_arch, args.batch_size, args.nb_epoch, args.depth, args.nb_dense_block, args.nb_filter,
                args.growth_rate, args.dropout_rate, args.learning_rate, args.weight_decay, args.plot_architecture,
-               args.model_path, args.check_point_name, args.data_aug)
+               args.model_path, args.check_point_name, args.data_aug, args.base_path)
