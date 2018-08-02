@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-"""run_3d_inception_v2.py: Run script for inception network calling in augmentation and utilities functions"""
+"""Run_Utils.py: Run utilities for inception network calling in augmentation and utilities functions"""
 
 __author__ = "David McCoy"
 __copyright__ = "Copyright 2018, Hemorrhage Detector Project @ UCSF"
@@ -23,56 +23,11 @@ from keras.callbacks import ModelCheckpoint
 from keras.models import load_model
 from keras.utils import plot_model
 from sklearn.metrics import roc_curve, auc
-
-import inception_resnet_v1_noise_adapt
-import vol_image_aug_v2
-import vol_inception_utils
+import Image_Aug_3D_Utils
 
 import random
 
-BASE_PATH = "/media/mccoyd2/hamburger/hemorrhage_study/"
-OVERFLOW_PATH = "/media/mccoyd2/spaghetti/"
 
-BATCH_SIZE = 10
-N_EPOCHS = 250
-SUPER_BATCH_SIZE = 2000
-
-TRAIN_LENGTH = '14186'
-VALID_LENGTH = '1685'
-TEST_LENGTH = '2144'
-
-HDF5_PATH_TEMPLATE = BASE_PATH + 'tensors/{}_256x256x40_{}.hdf5'
-
-HDF5_PATH_TRAIN = HDF5_PATH_TEMPLATE.format("train", TRAIN_LENGTH)
-HDF5_PATH_VALID = HDF5_PATH_TEMPLATE.format("valid", VALID_LENGTH)
-HDF5_PATH_TEST = HDF5_PATH_TEMPLATE.format("test", TEST_LENGTH)
-
-HDF5_FILE_TRAIN = h5py.File(HDF5_PATH_TRAIN, "r")
-DATA_NUM_TRAIN = HDF5_FILE_TRAIN["train_img"].shape[0]
-TRAIN_INDICES = range(DATA_NUM_TRAIN)
-N_STEPS_PER_EPOCH_TRAIN = int(ceil(float(SUPER_BATCH_SIZE) / BATCH_SIZE))
-HDF5_FILE_TEST = h5py.File(HDF5_PATH_TEST, "r")
-DATA_NUM_TEST = HDF5_FILE_TEST["test_img"].shape[0]
-TEST_INDICES = range(DATA_NUM_TEST)
-N_STEPS_PER_EPOCH_TEST = int(ceil(float(DATA_NUM_TEST) / BATCH_SIZE))
-
-# we'll cache this many batches worth of augmented data in one file
-# NUM_SUPER_BATCH = ceil((float(TRAIN_LENGTH) / (BATCH_SIZE * SUPER_BATCH_SIZE)) * 2)
-NUM_SUPER_BATCH = 50
-AUGMENTED_DATA_PATH = OVERFLOW_PATH + 'augmented_training_cache/'
-ORIG_DATA_PATH = OVERFLOW_PATH + 'orig_training_cache/'
-
-AUGMENTED_DATA_TEMPLATE = AUGMENTED_DATA_PATH + 'super_batch_{}.hdf5'
-ORIG_DATA_TEMPLATE = ORIG_DATA_PATH + 'super_batch_{}.hdf5'
-
-AUGMENTED_DATA_IMAGE_NAME = 'images'
-AUGMENTED_DATA_LABEL_NAME = 'labels'
-
-ORIG_DATA_IMAGE_NAME = 'images'
-ORIG_DATA_LABEL_NAME = 'labels'
-ORIG_DATA_ACN_NAME = 'acns'
-ORIG_DATA_REPORTS_NAME = 'reports'
-ORIG_DATA_PATHS_NAME = 'paths'
 
 def load_valid_data_full():
     """
@@ -369,36 +324,35 @@ def generate_testing_from_hdf5(indices, batch_size=15):
             yield (images_test, labels_test)
 
 
-def run_real_time_generator_model(data_aug=False):
+def run_real_time_generator_model(data_aug, train_indices, batch_size, model, data_num_train, epochs, images_valid, labels_valid, callback):
     """
     train network and report training time
     """
-    images_valid, labels_valid, data_num_valid = load_valid_data_full()
     training_data_generator = generate_training_from_hdf5(
-        TRAIN_INDICES,
-        batch_size=BATCH_SIZE,
+        train_indices,
+        batch_size=batch_size,
         image_aug=data_aug)
 
-    N_STEPS_PER_EPOCH_TRAIN_RT = int(ceil(float(DATA_NUM_TRAIN) / BATCH_SIZE))
+    real_time_steps_per_epoch = int(ceil(float(data_num_train) / batch_size))
 
     start_time = datetime.datetime.now()
 
-    history_inception = inception_resnet_v1_noise_adapt.parallel_model.fit_generator(
+    model_history = model.fit_generator(
         training_data_generator,
-        steps_per_epoch=N_STEPS_PER_EPOCH_TRAIN_RT,
-        nb_epoch=N_EPOCHS,
-        validation_data=(images_valid, [labels_valid, labels_valid]),
-        callbacks=[inception_resnet_v1_noise_adapt.best_wts_callback],
+        steps_per_epoch=real_time_steps_per_epoch,
+        nb_epoch=epochs,
+        validation_data=(images_valid, labels_valid),
+        callbacks=[callback],
         max_queue_size=10)
 
     end_time = datetime.datetime.now()
     print('Training time for %d epochs using batch size of %d was %s' \
-          % (epochs, BATCH_SIZE, end_time - start_time))
+          % (epochs, batch_size, end_time - start_time))
 
     with open(BASE_PATH + 'history/trainHistoryDict', 'wb') as file_pi:
-        pickle.dump(history_inception.history, file_pi)
+        pickle.dump(model_history.history, file_pi)
 
-    return history_inception
+    return model_history
 
 
 def run_cached_aug_data_model(noise_adaption=False):
@@ -583,7 +537,7 @@ def retrain_model_same_train():
 
 if __name__ == '__main__':
     #split_train_hdf()
-    # history = run_real_time_generator_model(data_aug=False)
+     history = run_real_time_generator_model(data_aug=False)
     #augment_training_data(TRAIN_INDICES, num_super_batches=NUM_SUPER_BATCH,
     #                      allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7), max_transformations=3)
     latd_generator = latd_generator(batch_size=BATCH_SIZE)

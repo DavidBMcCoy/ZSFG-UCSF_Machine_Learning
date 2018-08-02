@@ -30,22 +30,13 @@ from keras.layers import Input, merge, Dropout, Dense, Lambda, Flatten, Activati
 from keras.layers.normalization import BatchNormalization
 from keras.layers.convolutional import MaxPooling3D, AveragePooling3D, Conv3D
 from keras.models import Model
-from keras.utils import multi_gpu_model
-import keras
+
 from keras import backend as K
-from vol_inception_utils import *
-from keras.callbacks import ModelCheckpoint
 from numpy import genfromtxt
 
 import warnings
 
 warnings.filterwarnings('ignore')
-
-GPU = 2
-BETA = 0.
-DROPOUT = 0.7
-LEARNING_RATE = 0.000001
-CHECK_POINT_NAME = '/Inception_hemorrhage_model_run_noise_adapt.hdf5'
 
 
 ## create noise adaption softmax layer
@@ -246,7 +237,7 @@ def reduction_resnet_B(input):
     return m
 
 
-def create_inception_resnet_v1(nb_classes=2, scale=True, noise_adaption=False):
+def create_inception_resnet(nb_classes=2, scale=True, noise_adaption=False, nlayer_b1=5, nlayer_b2=10, nlayer_b3=5):
     if noise_adaption:
         CONFUSION = genfromtxt('/media/mccoyd2/hamburger/hemorrhage_study/results/confusion_matrix.csv', delimiter=',')
         CHANNEL_WEIGHTS = CONFUSION.copy()
@@ -270,14 +261,14 @@ def create_inception_resnet_v1(nb_classes=2, scale=True, noise_adaption=False):
     x = inception_resnet_stem(init)
 
     # 5 x Inception Resnet A
-    for i in range(5):
+    for i in range(nlayer_b1):
         x = inception_resnet_A(x, scale_residual=scale)
 
     # Reduction A - From Inception v4
     x = reduction_A(x, k=192, l=192, m=256, n=384)
 
     # 10 x Inception Resnet B
-    for i in range(10):
+    for i in range(nlayer_b2):
         x = inception_resnet_B(x, scale_residual=scale)
 
     # Auxiliary tower
@@ -291,7 +282,7 @@ def create_inception_resnet_v1(nb_classes=2, scale=True, noise_adaption=False):
     x = reduction_resnet_B(x)
 
     # 5 x Inception Resnet C
-    for i in range(5):
+    for i in range(nlayer_b3):
         x = inception_resnet_C(x, scale_residual=scale)
 
     # Average Pooling
@@ -306,37 +297,8 @@ def create_inception_resnet_v1(nb_classes=2, scale=True, noise_adaption=False):
 
     if noise_adaption:
         channeled_output = Channel(name='noise_adaption_channel', weights=[CHANNEL_WEIGHTS])(base_network_out)
-        model = Model(input=init, output=[channeled_output, base_network_out, aux_out], name='Inception-Resnet-v1')
+        inception_model = Model(input=init, output=[channeled_output, base_network_out, aux_out], name='Inception-Resnet-v1')
     else:
-        model = Model(input=init, output=[base_network_out, aux_out], name='Inception-Resnet-v1')
+        inception_model = Model(input=init, output=[base_network_out, aux_out], name='Inception-Resnet-v1')
 
-    return model
-
-
-class ModelMGPU(Model):
-    def __init__(self, ser_model, gpus):
-        pmodel = multi_gpu_model(ser_model, gpus)
-        self.__dict__.update(pmodel.__dict__)
-        self._smodel = ser_model
-
-    def __getattribute__(self, attrname):
-        '''Override load and save methods to be used from the serial-model. The
-        serial-model holds references to the weights in the multi-gpu model.
-        '''
-        # return Model.__getattribute__(self, attrname)
-        if 'load' in attrname or 'save' in attrname:
-            return getattr(self._smodel, attrname)
-
-        return super(ModelMGPU, self).__getattribute__(attrname)
-
-
-inception_resnet = create_inception_resnet_v1()
-
-parallel_model = ModelMGPU(inception_resnet, GPU)
-
-Adam_opt = keras.optimizers.Adam(lr=LEARNING_RATE, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=True)
-
-best_wts_callback = ModelCheckpoint(MODEL_PATH + CHECK_POINT_NAME,
-                                    save_weights_only=False, save_best_only=True, monitor='val_loss', verbose=0,
-                                    mode='min')
-parallel_model.compile(optimizer=Adam_opt, loss='binary_crossentropy', metrics=['accuracy'])
+    return inception_model

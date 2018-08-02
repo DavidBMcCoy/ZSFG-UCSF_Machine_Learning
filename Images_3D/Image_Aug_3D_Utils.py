@@ -311,9 +311,3 @@ def random_batch_augmentation(batch, allowed_transformations, max_transformation
         batch_augh[index,...] = image
 
     return batch_augh
-
-
-
-
-
-
