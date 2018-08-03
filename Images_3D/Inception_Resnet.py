@@ -237,7 +237,13 @@ def reduction_resnet_B(input):
     return m
 
 
-def create_inception_resnet(nb_classes=2, scale=True, noise_adaption=False, nlayer_b1=5, nlayer_b2=10, nlayer_b3=5):
+def create_inception_resnet(nb_classes=2,
+                            scale=True,
+                            noise_adaption=False,
+                            nlayer_b1=5,
+                            nlayer_b2=10,
+                            nlayer_b3=5,
+                            dropout=0.5):
     if noise_adaption:
         CONFUSION = genfromtxt('/media/mccoyd2/hamburger/hemorrhage_study/results/confusion_matrix.csv', delimiter=',')
         CHANNEL_WEIGHTS = CONFUSION.copy()
@@ -289,7 +295,7 @@ def create_inception_resnet(nb_classes=2, scale=True, noise_adaption=False, nlay
     x = AveragePooling3D(pool_size=(4, 4, 4))(x)
 
     # Dropout
-    x = Dropout(DROPOUT)(x)
+    x = Dropout(dropout)(x)
     x = Flatten()(x)
 
     # Output

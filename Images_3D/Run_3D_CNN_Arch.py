@@ -4,9 +4,8 @@ from __future__ import print_function
 
 __author__ = "David McCoy"
 __copyright__ = "Copyright 2018, Hemorrhage Detector Project @ UCSF"
-__credits__ = ["Sara Dupont", "Grayhem Mills"]
-__license__ = "GPL"
-__version__ = "2.0.0"
+__license__ = "MIT"
+__version__ = "3.0.0"
 __maintainer__ = "David McCoy"
 __email__ = "david.mccoy@ucsf.edu"
 __status__ = "Under Construction"
@@ -30,15 +29,26 @@ import Run_Utils
 
 # Global variables that are unlikely to change between runs
 GPUs = 2
-BASE_PATH = "/media/mccoyd2/hamburger/hemorrhage_study/"
-OVERFLOW_PATH = "/media/mccoyd2/spaghetti/"
-
 
 # this class makes it possible to save checkpoints while using multiple GPUS, which apparently is an issue with Keras...
 
 
-def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filter, growth_rate, dropout_rate,
-               learning_rate, weight_decay, plot_architecture, model_path, check_point_name, data_aug, base_path, history_filename):
+def run_3d_cnn(model_arch,
+               batch_size,
+               nb_epoch,
+               depth,
+               nb_dense_block,
+               nb_filter,
+               growth_rate,
+               dropout_rate,
+               learning_rate,
+               weight_decay,
+               plot_architecture,
+               check_point_name,
+               data_aug,
+               base_path,
+               history_filename):
+
     """ Run 3d cnn
     :param history_filename: filename of pickle to dump classification by epoch
     :param model_arch: int -- number indicating which architecture to use as listed in help
@@ -55,7 +65,7 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
     :param data_aug: int -- type of data augmentation to do
     """
 
-    hdf5_path =base_path + '/tensors/{}.hdf5'
+    hdf5_path = base_path+'/tensors/{}.hdf5'
 
     hdf5_train = hdf5_path.format("train")
     hdf5_valid = hdf5_path.format("valid")
@@ -69,36 +79,37 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
         num_super_batch = 50
         super_batch_size = 2000
         n_steps_per_epoch_train = int(ceil(float(super_batch_size) / batch_size))
+        # we'll cache this many batches worth of augmented data in one file
+        # num_super_batch = ceil((float(TRAIN_LENGTH) / (BATCH_SIZE * SUPER_BATCH_SIZE)) * 2)
+        augmented_data_path = overflow_path + 'augmented_training_cache/'
+        orig_data_path = overflow_path + 'orig_training_cache/'
+        augmented_data_template = augmented_data_path + 'super_batch_{}.hdf5'
+        orig_data_template = orig_data_path + 'super_batch_{}.hdf5'
+        augmented_data_image_name = 'images'
+        augmented_data_label_name = 'labels'
+
+        orig_data_image_name = 'images'
+        orig_data_label_name = 'labels'
+        orig_data_acn_name = 'acns'
+        orig_data_reports_name = 'reports'
+        orig_data_paths_name = 'paths'
+
 
     hdf_file_test = h5py.File(hdf5_test, "r")
     data_num_test = hdf_file_test["test_img"].shape[0]
     test_indices = range(data_num_test)
     n_steps_per_epoch_test = int(ceil(float(data_num_test) / batch_size))
 
-    # we'll cache this many batches worth of augmented data in one file
-    # num_super_batch = ceil((float(TRAIN_LENGTH) / (BATCH_SIZE * SUPER_BATCH_SIZE)) * 2)
-    AUGMENTED_DATA_PATH = OVERFLOW_PATH + 'augmented_training_cache/'
-    ORIG_DATA_PATH = OVERFLOW_PATH + 'orig_training_cache/'
-
-    AUGMENTED_DATA_TEMPLATE = AUGMENTED_DATA_PATH + 'super_batch_{}.hdf5'
-    ORIG_DATA_TEMPLATE = ORIG_DATA_PATH + 'super_batch_{}.hdf5'
-
-    AUGMENTED_DATA_IMAGE_NAME = 'images'
-    AUGMENTED_DATA_LABEL_NAME = 'labels'
-
-    ORIG_DATA_IMAGE_NAME = 'images'
-    ORIG_DATA_LABEL_NAME = 'labels'
-    ORIG_DATA_ACN_NAME = 'acns'
-    ORIG_DATA_REPORTS_NAME = 'reports'
-    ORIG_DATA_PATHS_NAME = 'paths'
-
-
-    list_dir = [base_path+"/log", base_path +"/figures", base_path+"/history"]
+    list_dir = [base_path +'/logs', base_path +'/figures', base_path +'/history', base_path + '/models']
 
     for d in list_dir:
         if not os.path.exists(d):
             os.makedirs(d)
 
+    log_path = base_path + '/logs'
+    figure_path = base_path +'/figures'
+    history_path = base_path + '/history'
+    model_path = base_path + '/models'
 
     #####################################################################
     # load in the validation and testing images which should fit in RAM #
@@ -106,13 +117,12 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
 
 
     print('Loading validation and test sets, this will take a couple minutes')
-    #images_valid, labels_valid, data_num_valid = Run_Utils.load_valid_data_full(hdf5_valid)
-    #images_test, labels_test, data_num_test = Run_Utils.load_test_data_full(hdf5_test)
+    images_valid, labels_valid, data_num_valid = Run_Utils.load_valid_data_full(hdf5_valid)
+    images_test, labels_test, data_num_test = Run_Utils.load_test_data_full(hdf5_test)
 
-    #img_dim = images_test.shape[1:]
+    img_dim = (256,256,40,1)
     #nb_classes = len(np.unique(images_test))
 
-    img_dim = (256, 256, 40, 1)
     nb_classes = 2
 
     if nb_classes == 2:
@@ -130,17 +140,33 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
 
     if model_arch == 1:
         import Main_Path_3D
+
     if model_arch == 2:
         import Resnets_3D
-        model = Resnets_3D.resnet_50_3d(input_shape=img_dim, classes=nb_classes)
+        model = Resnets_3D.resnet_50_3d(input_shape=img_dim,
+                                        classes=nb_classes)
+
     if model_arch == 3:
         import Inception_Resnet
-        model = Inception_Resnet.create_inception_resnet(nb_classes=2, scale=True, noise_adaption=False, nlayer_b1=5, nlayer_b2=10, nlayer_b3=5)
+        model = Inception_Resnet.create_inception_resnet(nb_classes=nb_classes,
+                                                         scale=True,
+                                                         noise_adaption=False,
+                                                         nlayer_b1=5,
+                                                         nlayer_b2=10,
+                                                         nlayer_b3=5,
+                                                         dropout=dropout_rate)
     if model_arch == 4:
         import DenseNet_3D
-        model = DenseNet_3D.DenseNet(nb_classes=nb_classes, img_dim=img_dim, depth=depth, nb_dense_block=nb_dense_block, growth_rate=growth_rate, nb_filter=nb_filter,
-                                     dropout_rate=dropout_rate, weight_decay=weight_decay, activation=activation)
-    else:
+        model = DenseNet_3D.DenseNet(nb_classes=nb_classes,
+                                     img_dim=img_dim,
+                                     depth=depth,
+                                     nb_dense_block=nb_dense_block,
+                                     growth_rate=growth_rate,
+                                     nb_filter=nb_filter,
+                                     dropout_rate=dropout_rate,
+                                     weight_decay=weight_decay,
+                                     activation=activation)
+    if model_arch > 5:
         raise ValueError('Number indicated is not part of the available models')
 
     # Model output
@@ -172,15 +198,27 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
     else:
         model_parallel = model
 
-    Adam_opt = keras.optimizers.Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=True)
+    Adam_opt = keras.optimizers.Adam(lr=learning_rate,
+                                     beta_1=0.9,
+                                     beta_2=0.999,
+                                     epsilon=None,
+                                     decay=0.0,
+                                     amsgrad=True)
+
     best_wts_callback = ModelCheckpoint(model_path + check_point_name,
-                                        save_weights_only=False, save_best_only=True, monitor='val_loss', verbose=0,
+                                        save_weights_only=False,
+                                        save_best_only=True,
+                                        monitor='val_loss',
+                                        verbose=0,
                                         mode='min')
-    model_parallel.compile(optimizer=Adam_opt, loss=loss, metrics=['accuracy'])
+
+    model_parallel.compile(optimizer=Adam_opt,
+                           loss=loss,
+                           metrics=['accuracy'])
 
     if plot_architecture:
-        from keras.utils.visualize_util import plot
-        plot(model_parallel, to_file='./figures/densenet_archi.png', show_shapes=True)
+        from keras.utils.vis_utils import plot_model
+        plot_model(model_parallel, to_file=figure_path+'/densenet_arch_test.png', show_shapes=True)
 
         ####################
         # Network training #
@@ -189,22 +227,52 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
         print("Training")
 
     if data_aug == 1:
-        history = Run_Utils.run_real_time_generator_model(data_aug=True, train_indices=train_indices,
-                                                          batch_size=batch_size, model=model,
-                                                          data_num_train=data_num_train, epochs=nb_epoch,
+
+        history = Run_Utils.run_real_time_generator_model(data_aug=True,
+                                                          indices=train_indices,
+                                                          batch_size=batch_size,
+                                                          model=model_parallel,
+                                                          data_num_train=data_num_train,
+                                                          epochs=nb_epoch,
                                                           images_valid=images_valid,
-                                                          labels_valid=labels_valid, callback=best_wts_callback,
-                                                          history_filename=history_filename)
+                                                          labels_valid=labels_valid,
+                                                          callback=best_wts_callback,
+                                                          base_path=base_path,
+                                                          history_filename=history_filename,
+                                                          hdf5_file_train=hdf5_file_train)
     if data_aug == 2:
-        history = Run_Utils.augment_training_data(train_indices, num_super_batches=num_super_batch,
-                           allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7), max_transformations=3)
+
+        if not cached_data:
+            Run_Utils.augment_training_data(indices=train_indices,
+                                                      num_super_batches=num_super_batch,
+                                                      max_transformations=3,
+                                                      batch_size= batch_size,
+                                                      super_batch_size=super_batch_size,
+                                                      augmented_data_template=augmented_data_template,
+                                                      allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7))
+            history = Run_Utils.run_cached_aug_data_model(model,
+                              noise_adaption=False,
+                              n_steps_per_epoch_train=n_steps_per_epoch_train,
+                              epochs=nb_epoch,
+                              validation_images=images_valid,
+                              validation_labels=labels_valid,
+                              callback=best_wts_callback,
+                              batch_size=batch_size,
+                              base_path=base_path)
+        #if cached_data:
+
+
 
     if data_aug == 3:
-        history = Run_Utils.run_real_time_generator_model(data_aug=False, train_indices=train_indices,
-                                                          batch_size=batch_size, model=model,
-                                                          data_num_train=data_num_train, epochs=nb_epoch,
+        history = Run_Utils.run_real_time_generator_model(data_aug=False,
+                                                          train_indices=train_indices,
+                                                          batch_size=batch_size,
+                                                          model=model,
+                                                          data_num_train=data_num_train,
+                                                          epochs=nb_epoch,
                                                           images_valid=images_valid,
-                                                          labels_valid=labels_valid, callback=best_wts_callback)
+                                                          labels_valid=labels_valid,
+                                                          callback=best_wts_callback)
 
 
 ### changes to pull on msi
@@ -230,14 +298,13 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=10, type=int, help='Batch size')
     parser.add_argument('--nb_epoch', default=200, type=int, help='Number of epochs')
     parser.add_argument('--depth', type=int, default=7, help='Network depth')
-    parser.add_argument('--nb_dense_block', type=int, default=2, help='Number of dense blocks')
-    parser.add_argument('--nb_filter', type=int, default=16, help='Initial number of conv filters')
+    parser.add_argument('--nb_dense_block', type=int, default=4, help='Number of dense blocks')
+    parser.add_argument('--nb_filter', type=int, default=16, help='Initial number of conv filters that growth rate starts from')
     parser.add_argument('--growth_rate', type=int, default=12, help='Number of new filters added by conv layers')
     parser.add_argument('--dropout_rate', type=float, default=0.2, help='Dropout rate')
     parser.add_argument('--learning_rate', type=float, default=1E-3, help='Learning rate')
     parser.add_argument('--weight_decay', type=float, default=1E-4, help='L2 regularization on weights')
-    parser.add_argument('--plot_architecture', type=bool, default=False, help='Save a plot of the network architecture')
-    parser.add_argument('--model_path', type=str, help='path to where to save the model (no github)')
+    parser.add_argument('--plot_architecture', type=bool, default=True, help='Save a plot of the network architecture')
     parser.add_argument('--check_point_name', type=str,
                         help='name of the hdf5 file in which the model is saved based on validation acccuracy')
     parser.add_argument('--data_aug', type=int, default=1,
@@ -253,7 +320,14 @@ if __name__ == '__main__':
     for name, value in parser.parse_args()._get_kwargs():
         print(name, value)
 
+    if args.data_aug == 2:
+        cached_data = input("Has the augmented already been augmented and saved? Please enter True or False: ")
+        overflow_path = input("Please select the path to your augmented cache data") #/media/mccoyd2/spaghetti/
+
+
+
+
 
     run_3d_cnn(args.model_arch, args.batch_size, args.nb_epoch, args.depth, args.nb_dense_block, args.nb_filter,
                args.growth_rate, args.dropout_rate, args.learning_rate, args.weight_decay, args.plot_architecture,
-               args.model_path, args.check_point_name, args.data_aug, args.base_path, args.history_filename)
+               args.check_point_name, args.data_aug, args.base_path, args.history_filename)

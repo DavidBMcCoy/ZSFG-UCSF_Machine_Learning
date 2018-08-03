@@ -59,7 +59,7 @@ def bottle_neck(x, concat_axis, nb_filter, dropout_rate=None, weight_decay=1E-4)
     if dropout_rate:
         x = Dropout(dropout_rate)(x)
 
-    x = AveragePooling3D((2, 2, 2), strides=(2, 2, 1))(x)
+    x = AveragePooling3D((2, 2, 2), strides=(2, 2, 2))(x)
     return x
 
 

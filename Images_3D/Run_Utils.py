@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 """Run_Utils.py: Run utilities for inception network calling in augmentation and utilities functions"""
 
 __author__ = "David McCoy"
@@ -133,65 +131,14 @@ def report_counts(labels_valid, labels_test, data_num_test, data_num_valid):
     print ("number of test cases: " + str(counts_test_y[1]) + " | number of test controls " + str(counts_test_y[0]))
 
 
-def generate_training_from_hdf5(
-        data_num_train,
-        hdf5_file_train,
-        indices,
-        batch_size,
-        image_aug=True,
-        allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8),
-        max_transformations=3,
-        verbose=True):
-    """
-    perform random augmentations on the training data and yield batches.
-    note the input data is drawn from HDF5_FILE_TRAIN, which is loaded into memory when this module
-    is imported.
-
-    :argument
-    indices -- range of the data from 0 to end for indexing
-    batch_size -- number of images to generate and yield from the generator per call
-    image_aug -- run the image augmentation function to random augment images
-    allowed_transformation -- which augmentation functions to run from vol_image_aug script
-    max_transformations -- max number of transformations to run on each image
-    verbose -- if true, print the time it takes to process
-    :re
-
-
-    """
-    while True:
-        np.random.shuffle(indices)
-        for i in range(0, data_num_train, batch_size):
-            time_start_load_aug = datetime.datetime.now()
-            # print("\n Current training index is: "+str(i)+'\n')
-            # t0 = time()
-            batch_indices = indices[i:i + batch_size]
-            batch_indices.sort()
-            # print("\n Batch indices: "+str(batch_indices))
-            images_train = hdf5_file_train["train_img"][batch_indices, ...]
-            labels_train = hdf5_file_train["train_labels"][batch_indices]
-            acns_train = hdf5_file_train["train_acns"][batch_indices, ...]
-            # images_valid = np.array(hdf5_file_valid["valid_img"][:]) # your test set features
-            # labels_valid = np.array(hdf5_file_valid["valid_labels"][:]) # your test set labels
-
-            labels_train = Preprocessing_Utils.convert_to_one_hot(labels_train, 2).T
-            # labels_valid = convert_to_one_hot(labels_valid, 2).T
-
-            if image_aug:
-                images_train = Image_Aug_3D_Utils.random_batch_augmentation(
-                    images_train,
-                    allowed_transformations=allowed_transformations,
-                    max_transformations=max_transformations)
-            if verbose:
-                print('Loading and aug time: %s' % (datetime.datetime.now() - time_start_load_aug))
-
-            yield (images_train, [labels_train, labels_train])
-
-
 def augment_training_data(
         indices,
         num_super_batches,
-        allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8),
-        max_transformations=3):
+        max_transformations,
+        batch_size,
+        super_batch_size,
+        augmented_data_template,
+        allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8)):
     """
     run all the augmentations on the training data and throw it on disk in chunks of 10 or so
     training batches. each batch being 13 images. the output image files will have shape
@@ -200,8 +147,8 @@ def augment_training_data(
 
     # this does the augmentation also
     training_data_generator = generate_training_from_hdf5(
-        TRAIN_INDICES,
-        batch_size=BATCH_SIZE,
+        indices,
+        batch_size=batch_size,
         image_aug=True,
         allowed_transformations=allowed_transformations,
         max_transformations=max_transformations)
@@ -209,7 +156,7 @@ def augment_training_data(
     for super_batch_n in range(int(num_super_batches)):
         image_accumulator = []
         label_accumulator = []
-        for _, batch in zip(range(SUPER_BATCH_SIZE), training_data_generator):
+        for _, batch in zip(range(super_batch_size), training_data_generator):
             image_accumulator.append(batch[0])
             label_accumulator.append(batch[1][0])
 
@@ -218,14 +165,19 @@ def augment_training_data(
         label_accumulator = np.concatenate(label_accumulator, axis=0)
 
         # where do we write this data?
-        filename = AUGMENTED_DATA_TEMPLATE.format(super_batch_n)
+        filename = augmented_data_template.format(super_batch_n)
         with h5py.File(filename, mode='w') as the_file:
             # NOTE: this might be a good place to coerce the images to a specific dtype
-            the_file.create_dataset(AUGMENTED_DATA_IMAGE_NAME, data=image_accumulator)
-            the_file.create_dataset(AUGMENTED_DATA_LABEL_NAME, data=label_accumulator)
+            the_file.create_dataset(augmented_data_template, data=image_accumulator)
+            the_file.create_dataset(augmented_data_template, data=label_accumulator)
 
 
-def latd_generator(batch_size=10):
+def cache_image_loading_generator(
+        augmented_data_path,
+        augmented_data_template,
+        augmented_data_image_name,
+        augmented_data_label_name,
+        batch_size=10):
     """
     continuously yield from random super batches of augmented data via batchwise steps.
     Randomly select super-batch -> randomize indices - > iterate through super-batch by batch size
@@ -234,26 +186,25 @@ def latd_generator(batch_size=10):
     """
     while True:
         # find how many files we have
-        data_path = Path(AUGMENTED_DATA_PATH)
+        data_path = Path(augmented_data_path)
         probably_files = list(data_path.glob('*.hdf5'))
         num_files = len(probably_files)
         file_number = np.random.randint(num_files)
-        file_name = AUGMENTED_DATA_TEMPLATE.format(file_number)
+        file_name = augmented_data_template.format(file_number)
 
         this_file = h5py.File(file_name, "r")
-        data_len = this_file[AUGMENTED_DATA_IMAGE_NAME].shape[0]
-        indices = range(this_file[AUGMENTED_DATA_IMAGE_NAME].shape[0])
+        data_len = this_file[augmented_data_image_name].shape[0]
+        indices = range(this_file[augmented_data_image_name].shape[0])
         np.random.shuffle(indices)
 
         for i in range(0, data_len, batch_size):
             print file_name
             batch_indices = indices[i:i + batch_size]
             batch_indices.sort()
-            images = np.array(this_file[AUGMENTED_DATA_IMAGE_NAME][batch_indices, ...])
-            labels = np.array(this_file[AUGMENTED_DATA_LABEL_NAME][batch_indices])
-            #labels = vol_inception_utils.convert_to_one_hot(labels, 2).T
+            images = np.array(this_file[augmented_data_image_name][batch_indices, ...])
+            labels = np.array(this_file[augmented_data_label_name][batch_indices])
 
-            yield (images, [labels, labels])
+            yield (images, labels)
 
 
 def load_augmented_training_data(batch_size=13):
@@ -325,13 +276,76 @@ def generate_testing_from_hdf5(indices, batch_size=15):
             yield (images_test, labels_test)
 
 
-def run_real_time_generator_model(data_aug, train_indices, batch_size, model,
-                                  data_num_train, epochs, images_valid, labels_valid,
-                                  callback, base_path,
-                                  history_filename):
+def generate_training_from_hdf5(
+        data_num_train,
+        hdf5_file_train,
+        indices,
+        batch_size,
+        image_aug=True,
+        allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8),
+        max_transformations=3,
+        verbose=True):
+    """
+    perform random augmentations on the training data and yield batches.
+    note the input data is drawn from HDF5_FILE_TRAIN, which is loaded into memory when this module
+    is imported.
+
+    :argument
+    indices -- range of the data from 0 to end for indexing
+    batch_size -- number of images to generate and yield from the generator per call
+    image_aug -- run the image augmentation function to random augment images
+    allowed_transformation -- which augmentation functions to run from vol_image_aug script
+    max_transformations -- max number of transformations to run on each image
+    verbose -- if true, print the time it takes to process
+    :re
+
+
+    """
+    while True:
+        np.random.shuffle(indices)
+        for i in range(0, data_num_train, batch_size):
+            time_start_load_aug = datetime.datetime.now()
+            # print("\n Current training index is: "+str(i)+'\n')
+            # t0 = time()
+            batch_indices = indices[i:i + batch_size]
+            batch_indices.sort()
+            # print("\n Batch indices: "+str(batch_indices))
+            images_train = hdf5_file_train["train_img"][batch_indices, ...]
+            labels_train = hdf5_file_train["train_labels"][batch_indices]
+            acns_train = hdf5_file_train["train_acns"][batch_indices, ...]
+            # images_valid = np.array(hdf5_file_valid["valid_img"][:]) # your test set features
+            # labels_valid = np.array(hdf5_file_valid["valid_labels"][:]) # your test set labels
+
+            labels_train = Preprocessing_Utils.convert_to_one_hot(labels_train, 2).T
+            # labels_valid = convert_to_one_hot(labels_valid, 2).T
+
+            if image_aug:
+                images_train = Image_Aug_3D_Utils.random_batch_augmentation(
+                    images_train,
+                    allowed_transformations=allowed_transformations,
+                    max_transformations=max_transformations)
+            if verbose:
+                print('Loading and aug time: %s' % (datetime.datetime.now() - time_start_load_aug))
+
+            yield (images_train, [labels_train])
+
+
+def run_real_time_generator_model(data_aug,
+                                  indices,
+                                  batch_size,
+                                  model,
+                                  data_num_train,
+                                  epochs,
+                                  images_valid,
+                                  labels_valid,
+                                  callback,
+                                  base_path,
+                                  history_filename,
+                                  hdf5_file_train):
     """
     train network using real-time 3D augmentation and report training time
     detailed: load data by batch size after shuffling from hdf5 file (training hdf5 and augment data before feeding into network)
+    :param hdf5_file_train: hdf5 storage for training set
     :param history_filename: filename to put classification results over epochs into for training and validation data
     :param data_aug: whether or not to augment the data
     :param train_indices: indices of the images in the hdf5 - shuffled first and then iteratively loaded in batches
@@ -344,11 +358,17 @@ def run_real_time_generator_model(data_aug, train_indices, batch_size, model,
     :param callback: callback filename to save the model
     :param base_path: path pointing to the main directory to store results, tensors etc.
     :return: model history
+
     """
     training_data_generator = generate_training_from_hdf5(
-        train_indices,
+        data_num_train=data_num_train,
+        hdf5_file_train=hdf5_file_train,
+        indices=indices,
         batch_size=batch_size,
-        image_aug=data_aug)
+        image_aug=True,
+        allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8),
+        max_transformations=4,
+        verbose=True)
 
     real_time_steps_per_epoch = int(ceil(float(data_num_train) / batch_size))
 
@@ -372,38 +392,47 @@ def run_real_time_generator_model(data_aug, train_indices, batch_size, model,
     return model_history
 
 
-def run_cached_aug_data_model(noise_adaption=False):
+def run_cached_aug_data_model(model,
+                              noise_adaption,
+                              n_steps_per_epoch_train,
+                              epochs,
+                              validation_images,
+                              validation_labels,
+                              callback,
+                              batch_size,
+                              base_path):
     """
     train network and report training time
     """
-    images_valid, labels_valid, data_num_valid = load_valid_data_full()
-
     start_time = datetime.datetime.now()
+    cache_image_loading_generator(augmented_data_path,
+        augmented_data_template,
+        augmented_data_image_name,
+        augmented_data_label_name,
+        batch_size=10)
 
     if noise_adaption:
-        history_inception = inception_resnet_v1_noise_adapt.parallel_model.fit_generator(
-            latd_generator,
-            steps_per_epoch=N_STEPS_PER_EPOCH_TRAIN,
-            nb_epoch=N_EPOCHS,
-            validation_data=(images_valid, [labels_valid, labels_valid, labels_valid]),
-            callbacks=[inception_resnet_v1_noise_adapt.best_wts_callback],
+        history_inception = model.parallel_model.fit_generator(
+            cache_image_loading_generator,
+            steps_per_epoch=n_steps_per_epoch_train,
+            nb_epoch=epochs,
+            validation_data=(validation_images, validation_labels),
+            callbacks=[callback],
             max_queue_size=10)
     else:
-        history_inception = inception_resnet_v1_noise_adapt.parallel_model.fit_generator(
-            latd_generator,
-            steps_per_epoch=N_STEPS_PER_EPOCH_TRAIN,
-            nb_epoch=N_EPOCHS,
-            validation_data=(images_valid, [labels_valid, labels_valid]),
-            callbacks=[inception_resnet_v1_noise_adapt.best_wts_callback],
+        history_inception = model.parallel_model.fit_generator(
+            cache_image_loading_generator,
+            steps_per_epoch=n_steps_per_epoch_train,
+            nb_epoch=epochs,
+            validation_data=(validation_images, validation_labels),
+            callbacks=[callback],
             max_queue_size=10)
 
     end_time = datetime.datetime.now()
-    print('Training time for %d epochs using batch size of %d was %s' % (N_EPOCHS, BATCH_SIZE, end_time - start_time))
+    print('Training time for %d epochs using batch size of %d was %s' % (epochs, batch_size, end_time - start_time))
 
-    with open(BASE_PATH + 'history/trainHistoryDict', 'wb') as file_pi:
+    with open(base_path + 'history/trainHistoryDict', 'wb') as file_pi:
         pickle.dump(history_inception.history, file_pi)
-
-    # inception_resnet_v1_noise_adapt.save(BASE_PATH+'/models/inception_aug_cach_v1.hdf5')
 
     return history_inception
 

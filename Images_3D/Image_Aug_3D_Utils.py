@@ -50,7 +50,7 @@ def random_zoom(image, isseg=False, **kwargs):
         left = (width - zw) // 2
 
         out = np.zeros_like(image)
-        print(zoom_tuple)
+        #print(zoom_tuple)
         out[top:top+zh, left:left+zw] = ndimage.zoom(image, zoom_tuple,**kwargs)
 
     # Zooming in
@@ -62,7 +62,7 @@ def random_zoom(image, isseg=False, **kwargs):
         top = (height - zh) // 2
         left = (width - zw) // 2
 
-        print(zoom_tuple)
+        #print(zoom_tuple)
         out = ndimage.zoom(image[top:top+zh, left:left+zw], zoom_tuple, **kwargs)
         # `out` might still be slightly larger than `img` due to rounding, so
         # trim off any extra pixels at the edges

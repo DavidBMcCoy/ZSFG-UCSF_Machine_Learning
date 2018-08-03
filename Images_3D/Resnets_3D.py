@@ -1,3 +1,4 @@
+# coding=utf-8
 """Resnets_3D.py: Run script for inception network calling in augmentation and utilities functions"""
 
 __author__ = "David McCoy"
@@ -63,12 +64,14 @@ def identity_block_3d(X, f, filters, stage, block):
     X = Activation('relu')(X)
 
     # Second component of main path (≈3 lines)
+
     X = Conv3D(filters=F2, kernel_size=(f, f, f), strides=(1, 1, 1), padding='same', name=conv_name_base + '2b',
                kernel_initializer=glorot_uniform(seed=0))(X)
     X = BatchNormalization(axis=4, name=bn_name_base + '2b')(X)
     X = Activation('relu')(X)
 
     # Third component of main path (≈2 lines)
+
     X = Conv3D(filters=F3, kernel_size=(1, 1, 1), strides=(1, 1, 1), padding='valid', name=conv_name_base + '2c',
                kernel_initializer=glorot_uniform(seed=0))(X)
     X = BatchNormalization(axis=4, name=bn_name_base + '2c')(X)
