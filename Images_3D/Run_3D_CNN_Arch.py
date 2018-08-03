@@ -37,10 +37,10 @@ OVERFLOW_PATH = "/media/mccoyd2/spaghetti/"
 # this class makes it possible to save checkpoints while using multiple GPUS, which apparently is an issue with Keras...
 
 
-
 def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filter, growth_rate, dropout_rate,
-               learning_rate, weight_decay, plot_architecture, model_path, check_point_name, data_aug, base_path):
+               learning_rate, weight_decay, plot_architecture, model_path, check_point_name, data_aug, base_path, history_filename):
     """ Run 3d cnn
+    :param history_filename: filename of pickle to dump classification by epoch
     :param model_arch: int -- number indicating which architecture to use as listed in help
     :param batch_size: int -- batch size
     :param nb_epoch: int -- number of training epochs
@@ -93,7 +93,7 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
     ORIG_DATA_PATHS_NAME = 'paths'
 
 
-    list_dir = [base_path+"./log", base_path +"./figures"]
+    list_dir = [base_path+"/log", base_path +"/figures", base_path+"/history"]
 
     for d in list_dir:
         if not os.path.exists(d):
@@ -138,8 +138,8 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
         model = Inception_Resnet.create_inception_resnet(nb_classes=2, scale=True, noise_adaption=False, nlayer_b1=5, nlayer_b2=10, nlayer_b3=5)
     if model_arch == 4:
         import DenseNet_3D
-        model = DenseNet_3D.DenseNet(nb_classes=nb_classes, img_dim = img_dim, depth=depth, nb_dense_block=nb_dense_block, growth_rate=growth_rate, nb_filter=nb_filter,
-                                     dropout_rate=dropout_rate, weight_decay=weight_decay, activation = activation)
+        model = DenseNet_3D.DenseNet(nb_classes=nb_classes, img_dim=img_dim, depth=depth, nb_dense_block=nb_dense_block, growth_rate=growth_rate, nb_filter=nb_filter,
+                                     dropout_rate=dropout_rate, weight_decay=weight_decay, activation=activation)
     else:
         raise ValueError('Number indicated is not part of the available models')
 
@@ -193,9 +193,10 @@ def run_3d_cnn(model_arch, batch_size, nb_epoch, depth, nb_dense_block, nb_filte
                                                           batch_size=batch_size, model=model,
                                                           data_num_train=data_num_train, epochs=nb_epoch,
                                                           images_valid=images_valid,
-                                                          labels_valid=labels_valid, callback=best_wts_callback)
+                                                          labels_valid=labels_valid, callback=best_wts_callback,
+                                                          history_filename=history_filename)
     if data_aug == 2:
-        Run_Utils.augment_training_data(TRAIN_INDICES, num_super_batches=NUM_SUPER_BATCH,
+        history = Run_Utils.augment_training_data(train_indices, num_super_batches=num_super_batch,
                            allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7), max_transformations=3)
 
     if data_aug == 3:
@@ -245,6 +246,7 @@ if __name__ == '__main__':
                              '3. data aug is set to false')
     parser.add_argument('--base_path', type=str, help="path to directory where subfolder for data, "
                                                       "models etc. are kept")
+    parser.add_argument('--history_filename', type=str, help='pickle filename to dump model training history')
     args = parser.parse_args()
 
     print("Network configuration:")
@@ -254,4 +256,4 @@ if __name__ == '__main__':
 
     run_3d_cnn(args.model_arch, args.batch_size, args.nb_epoch, args.depth, args.nb_dense_block, args.nb_filter,
                args.growth_rate, args.dropout_rate, args.learning_rate, args.weight_decay, args.plot_architecture,
-               args.model_path, args.check_point_name, args.data_aug, args.base_path)
+               args.model_path, args.check_point_name, args.data_aug, args.base_path, args.history_filename)

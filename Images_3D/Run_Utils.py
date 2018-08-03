@@ -325,9 +325,25 @@ def generate_testing_from_hdf5(indices, batch_size=15):
             yield (images_test, labels_test)
 
 
-def run_real_time_generator_model(data_aug, train_indices, batch_size, model, data_num_train, epochs, images_valid, labels_valid, callback):
+def run_real_time_generator_model(data_aug, train_indices, batch_size, model,
+                                  data_num_train, epochs, images_valid, labels_valid,
+                                  callback, base_path,
+                                  history_filename):
     """
-    train network and report training time
+    train network using real-time 3D augmentation and report training time
+    detailed: load data by batch size after shuffling from hdf5 file (training hdf5 and augment data before feeding into network)
+    :param history_filename: filename to put classification results over epochs into for training and validation data
+    :param data_aug: whether or not to augment the data
+    :param train_indices: indices of the images in the hdf5 - shuffled first and then iteratively loaded in batches
+    :param batch_size: number of images to load into the model at each time
+    :param model: type of model to run from args
+    :param data_num_train: total length of the training data to calculate steps per epoch to get through total data
+    :param epochs: number of iterations through the total data
+    :param images_valid: images to validate the training after each epoch
+    :param labels_valid: labels for the validation data
+    :param callback: callback filename to save the model
+    :param base_path: path pointing to the main directory to store results, tensors etc.
+    :return: model history
     """
     training_data_generator = generate_training_from_hdf5(
         train_indices,
@@ -350,7 +366,7 @@ def run_real_time_generator_model(data_aug, train_indices, batch_size, model, da
     print('Training time for %d epochs using batch size of %d was %s' \
           % (epochs, batch_size, end_time - start_time))
 
-    with open(BASE_PATH + 'history/trainHistoryDict', 'wb') as file_pi:
+    with open(base_path + '/history/'+history_filename, 'wb') as file_pi:
         pickle.dump(model_history.history, file_pi)
 
     return model_history
