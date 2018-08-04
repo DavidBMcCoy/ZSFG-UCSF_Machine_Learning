@@ -121,7 +121,8 @@ def run_3d_cnn(model_arch,
     images_valid, labels_valid, data_num_valid = Run_Utils.load_valid_data_full(hdf5_valid)
     images_test, labels_test, data_num_test = Run_Utils.load_test_data_full(hdf5_test)
 
-    img_dim = (256,256,40,1)
+    #img_dim = (256,256,40,1)
+    img_dim = images_test.shape[1:]
     #nb_classes = len(np.unique(images_test))
 
     nb_classes = 2
@@ -297,10 +298,10 @@ if __name__ == '__main__':
     parser.add_argument('--model_arch', type=int,
                         help="Which architecture to use [select by number]: [1] MainPath, [2] Resnet, "
                              "[3] Inception, [4] Densnet")
-    parser.add_argument('--batch_size', default=10, type=int, help='Batch size')
+    parser.add_argument('--batch_size', default=2, type=int, help='Batch size')
     parser.add_argument('--nb_epoch', default=200, type=int, help='Number of epochs')
     parser.add_argument('--depth', type=int, default=7, help='Network depth')
-    parser.add_argument('--nb_dense_block', type=int, default=10, help='Number of dense blocks')
+    parser.add_argument('--nb_dense_block', type=int, default=4, help='Number of dense blocks')
     parser.add_argument('--nb_filter', type=int, default=16, help='Initial number of conv filters that growth rate starts from')
     parser.add_argument('--growth_rate', type=int, default=12, help='Number of new filters added by conv layers')
     parser.add_argument('--dropout_rate', type=float, default=0.2, help='Dropout rate')
