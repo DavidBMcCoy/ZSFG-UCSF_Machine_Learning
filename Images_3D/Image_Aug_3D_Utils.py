@@ -263,13 +263,16 @@ def distort_elastic(image, smooth=10.0, scale=100.0, seed=0, distort_z=True):
     return distorted.reshape(image.shape)
 
 
-def random_batch_augmentation(batch, allowed_transformations, max_transformations, seed=None):
+def random_batch_augmentation(batch,
+                              allowed_transformations,
+                              max_transformations,
+                              seed=None):
     """
     perform up to `max_transformations` number of transformations on each image in the batch, out of
     the set of transformations indexed by allowed_transformations.
     """
     shape = batch.shape
-    batch_augh = np.empty(shape, dtype=batch.dtype)
+    batch_aug = np.empty(shape, dtype=batch.dtype)
 
     transformations = [
         no_aug_pass_image,
@@ -308,6 +311,6 @@ def random_batch_augmentation(batch, allowed_transformations, max_transformation
             image = transformations[this_transformation_index](image)
 
         # fire this augmented image into the batch accumulator
-        batch_augh[index,...] = image
+        batch_aug[index,...] = image
 
-    return batch_augh
+    return batch_aug

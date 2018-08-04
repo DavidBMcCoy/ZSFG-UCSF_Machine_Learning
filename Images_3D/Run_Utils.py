@@ -281,9 +281,9 @@ def generate_training_from_hdf5(
         hdf5_file_train,
         indices,
         batch_size,
+        max_transformations,
         image_aug=True,
         allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8),
-        max_transformations=3,
         verbose=True):
     """
     perform random augmentations on the training data and yield batches.
@@ -327,7 +327,7 @@ def generate_training_from_hdf5(
             if verbose:
                 print('Loading and aug time: %s' % (datetime.datetime.now() - time_start_load_aug))
 
-            yield (images_train, [labels_train])
+            yield (images_train, labels_train)
 
 
 def run_real_time_generator_model(data_aug,
@@ -341,7 +341,8 @@ def run_real_time_generator_model(data_aug,
                                   callback,
                                   base_path,
                                   history_filename,
-                                  hdf5_file_train):
+                                  hdf5_file_train,
+                                  max_transformations):
     """
     train network using real-time 3D augmentation and report training time
     detailed: load data by batch size after shuffling from hdf5 file (training hdf5 and augment data before feeding into network)
@@ -367,7 +368,7 @@ def run_real_time_generator_model(data_aug,
         batch_size=batch_size,
         image_aug=True,
         allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8),
-        max_transformations=4,
+        max_transformations=max_transformations,
         verbose=True)
 
     real_time_steps_per_epoch = int(ceil(float(data_num_train) / batch_size))

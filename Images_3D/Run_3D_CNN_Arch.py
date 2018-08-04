@@ -47,7 +47,8 @@ def run_3d_cnn(model_arch,
                check_point_name,
                data_aug,
                base_path,
-               history_filename):
+               history_filename,
+               max_trans):
 
     """ Run 3d cnn
     :param history_filename: filename of pickle to dump classification by epoch
@@ -239,7 +240,8 @@ def run_3d_cnn(model_arch,
                                                           callback=best_wts_callback,
                                                           base_path=base_path,
                                                           history_filename=history_filename,
-                                                          hdf5_file_train=hdf5_file_train)
+                                                          hdf5_file_train=hdf5_file_train,
+                                                          max_transformations=max_trans)
     if data_aug == 2:
 
         if not cached_data:
@@ -298,7 +300,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=10, type=int, help='Batch size')
     parser.add_argument('--nb_epoch', default=200, type=int, help='Number of epochs')
     parser.add_argument('--depth', type=int, default=7, help='Network depth')
-    parser.add_argument('--nb_dense_block', type=int, default=4, help='Number of dense blocks')
+    parser.add_argument('--nb_dense_block', type=int, default=10, help='Number of dense blocks')
     parser.add_argument('--nb_filter', type=int, default=16, help='Initial number of conv filters that growth rate starts from')
     parser.add_argument('--growth_rate', type=int, default=12, help='Number of new filters added by conv layers')
     parser.add_argument('--dropout_rate', type=float, default=0.2, help='Dropout rate')
@@ -314,6 +316,7 @@ if __name__ == '__main__':
     parser.add_argument('--base_path', type=str, help="path to directory where subfolder for data, "
                                                       "models etc. are kept")
     parser.add_argument('--history_filename', type=str, help='pickle filename to dump model training history')
+    parser.add_argument('--max_trans', type=int, default=3, help='max number of 3d transformations to do on each image')
     args = parser.parse_args()
 
     print("Network configuration:")
@@ -325,9 +328,6 @@ if __name__ == '__main__':
         overflow_path = input("Please select the path to your augmented cache data") #/media/mccoyd2/spaghetti/
 
 
-
-
-
     run_3d_cnn(args.model_arch, args.batch_size, args.nb_epoch, args.depth, args.nb_dense_block, args.nb_filter,
                args.growth_rate, args.dropout_rate, args.learning_rate, args.weight_decay, args.plot_architecture,
-               args.check_point_name, args.data_aug, args.base_path, args.history_filename)
+               args.check_point_name, args.data_aug, args.base_path, args.history_filename, args.max_trans)
