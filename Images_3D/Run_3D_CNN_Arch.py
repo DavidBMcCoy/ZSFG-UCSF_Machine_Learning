@@ -30,6 +30,7 @@ import Run_Utils
 # Global variables that are unlikely to change between runs
 GPUs = 2
 
+
 # this class makes it possible to save checkpoints while using multiple GPUS, which apparently is an issue with Keras...
 
 
@@ -49,7 +50,6 @@ def run_3d_cnn(model_arch,
                base_path,
                history_filename,
                max_trans):
-
     """ Run 3d cnn
     :param history_filename: filename of pickle to dump classification by epoch
     :param model_arch: int -- number indicating which architecture to use as listed in help
@@ -66,7 +66,7 @@ def run_3d_cnn(model_arch,
     :param data_aug: int -- type of data augmentation to do
     """
 
-    hdf5_path = base_path+'/tensors/{}.hdf5'
+    hdf5_path = base_path + '/tensors/{}.hdf5'
 
     hdf5_train = hdf5_path.format("train")
     hdf5_valid = hdf5_path.format("valid")
@@ -95,20 +95,19 @@ def run_3d_cnn(model_arch,
         orig_data_reports_name = 'reports'
         orig_data_paths_name = 'paths'
 
-
     hdf_file_test = h5py.File(hdf5_test, "r")
     data_num_test = hdf_file_test["test_img"].shape[0]
     test_indices = range(data_num_test)
     n_steps_per_epoch_test = int(ceil(float(data_num_test) / batch_size))
 
-    list_dir = [base_path +'/logs', base_path +'/figures', base_path +'/history', base_path + '/models']
+    list_dir = [base_path + '/logs', base_path + '/figures', base_path + '/history', base_path + '/models']
 
     for d in list_dir:
         if not os.path.exists(d):
             os.makedirs(d)
 
     log_path = base_path + '/logs'
-    figure_path = base_path +'/figures'
+    figure_path = base_path + '/figures'
     history_path = base_path + '/history'
     model_path = base_path + '/models'
 
@@ -116,14 +115,13 @@ def run_3d_cnn(model_arch,
     # load in the validation and testing images which should fit in RAM #
     #####################################################################
 
-
     print('Loading validation and test sets, this will take a couple minutes')
     images_valid, labels_valid, data_num_valid = Run_Utils.load_valid_data_full(hdf5_valid)
     images_test, labels_test, data_num_test = Run_Utils.load_test_data_full(hdf5_test)
 
-    #img_dim = (256,256,40,1)
+    # img_dim = (256,256,40,1)
     img_dim = images_test.shape[1:]
-    #nb_classes = len(np.unique(images_test))
+    # nb_classes = len(np.unique(images_test))
 
     nb_classes = 2
 
@@ -220,7 +218,7 @@ def run_3d_cnn(model_arch,
 
     if plot_architecture:
         from keras.utils.vis_utils import plot_model
-        plot_model(model_parallel, to_file=figure_path+'/densenet_arch_test.png', show_shapes=True)
+        plot_model(model_parallel, to_file=figure_path + '/densenet_arch_test.png', show_shapes=True)
 
         ####################
         # Network training #
@@ -229,7 +227,6 @@ def run_3d_cnn(model_arch,
         print("Training")
 
     if data_aug == 1:
-
         history = Run_Utils.run_real_time_generator_model(data_aug=True,
                                                           indices=train_indices,
                                                           batch_size=batch_size,
@@ -247,24 +244,22 @@ def run_3d_cnn(model_arch,
 
         if not cached_data:
             Run_Utils.augment_training_data(indices=train_indices,
-                                                      num_super_batches=num_super_batch,
-                                                      max_transformations=3,
-                                                      batch_size= batch_size,
-                                                      super_batch_size=super_batch_size,
-                                                      augmented_data_template=augmented_data_template,
-                                                      allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7))
+                                            num_super_batches=num_super_batch,
+                                            max_transformations=3,
+                                            batch_size=batch_size,
+                                            super_batch_size=super_batch_size,
+                                            augmented_data_template=augmented_data_template,
+                                            allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7))
             history = Run_Utils.run_cached_aug_data_model(model,
-                              noise_adaption=False,
-                              n_steps_per_epoch_train=n_steps_per_epoch_train,
-                              epochs=nb_epoch,
-                              validation_images=images_valid,
-                              validation_labels=labels_valid,
-                              callback=best_wts_callback,
-                              batch_size=batch_size,
-                              base_path=base_path)
-        #if cached_data:
-
-
+                                                          noise_adaption=False,
+                                                          n_steps_per_epoch_train=n_steps_per_epoch_train,
+                                                          epochs=nb_epoch,
+                                                          validation_images=images_valid,
+                                                          validation_labels=labels_valid,
+                                                          callback=best_wts_callback,
+                                                          batch_size=batch_size,
+                                                          base_path=base_path)
+        # if cached_data:
 
     if data_aug == 3:
         history = Run_Utils.run_real_time_generator_model(data_aug=False,
@@ -281,7 +276,6 @@ def run_3d_cnn(model_arch,
 ### changes to pull on msi
 
 
-
 # split_train_hdf()
 # history = run_real_time_generator_model(data_aug=False)
 #
@@ -289,7 +283,6 @@ def run_3d_cnn(model_arch,
 # history_inception = run_cached_aug_data_model(noise_adaption=False)
 # history_inception_retrain = retrain_model_same_train()
 # pred_ground_truth, Accuracy, Precision, Recall, F1_Score, cm, fpr, tpr, thresholds, roc_auc = test_model()
-
 
 
 if __name__ == '__main__':
@@ -302,7 +295,8 @@ if __name__ == '__main__':
     parser.add_argument('--nb_epoch', default=200, type=int, help='Number of epochs')
     parser.add_argument('--depth', type=int, default=7, help='Network depth')
     parser.add_argument('--nb_dense_block', type=int, default=4, help='Number of dense blocks')
-    parser.add_argument('--nb_filter', type=int, default=16, help='Initial number of conv filters that growth rate starts from')
+    parser.add_argument('--nb_filter', type=int, default=16,
+                        help='Initial number of conv filters that growth rate starts from')
     parser.add_argument('--growth_rate', type=int, default=12, help='Number of new filters added by conv layers')
     parser.add_argument('--dropout_rate', type=float, default=0.2, help='Dropout rate')
     parser.add_argument('--learning_rate', type=float, default=1E-3, help='Learning rate')
@@ -326,8 +320,7 @@ if __name__ == '__main__':
 
     if args.data_aug == 2:
         cached_data = input("Has the augmented already been augmented and saved? Please enter True or False: ")
-        overflow_path = input("Please select the path to your augmented cache data") #/media/mccoyd2/spaghetti/
-
+        overflow_path = input("Please select the path to your augmented cache data")  # /media/mccoyd2/spaghetti/
 
     run_3d_cnn(args.model_arch, args.batch_size, args.nb_epoch, args.depth, args.nb_dense_block, args.nb_filter,
                args.growth_rate, args.dropout_rate, args.learning_rate, args.weight_decay, args.plot_architecture,
