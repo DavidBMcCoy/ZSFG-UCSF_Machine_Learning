@@ -49,7 +49,8 @@ def run_3d_cnn(model_arch,
                data_aug,
                base_path,
                history_filename,
-               max_trans):
+               max_trans,
+               model_name):
     """ Run 3d cnn
     :param history_filename: filename of pickle to dump classification by epoch
     :param model_arch: int -- number indicating which architecture to use as listed in help
@@ -100,16 +101,21 @@ def run_3d_cnn(model_arch,
     test_indices = range(data_num_test)
     n_steps_per_epoch_test = int(ceil(float(data_num_test) / batch_size))
 
-    list_dir = [base_path + '/logs', base_path + '/figures', base_path + '/history', base_path + '/models']
+    list_dir = [base_path + '/logs',
+                base_path + '/figures',
+                base_path + '/history',
+                base_path + '/models',
+                base_path + '/results']
 
     for d in list_dir:
         if not os.path.exists(d):
             os.makedirs(d)
 
-    log_path = base_path + '/logs'
-    figure_path = base_path + '/figures'
-    history_path = base_path + '/history'
-    model_path = base_path + '/models'
+    log_path = base_path + '/logs/'
+    figure_path = base_path + '/figures/'
+    history_path = base_path + '/history/'
+    model_path = base_path + '/models/'
+    results_path = base_path + '/results/'
 
     #####################################################################
     # load in the validation and testing images which should fit in RAM #
@@ -140,6 +146,15 @@ def run_3d_cnn(model_arch,
 
     if model_arch == 1:
         import Main_Path_3D
+        model = Main_Path_3D.Simple_3D_CNN(nb_classes=nb_classes,
+                                           img_dim=img_dim,
+                                           depth=depth,
+                                           growth_rate=growth_rate,
+                                           activation=activation,
+                                           nb_filter=nb_filter,
+                                           dropout_rate=dropout_rate,
+                                           weight_decay=weight_decay,
+                                           nb_full_conn=1500)
 
     if model_arch == 2:
         import Resnets_3D
@@ -216,6 +231,10 @@ def run_3d_cnn(model_arch,
                            loss=loss,
                            metrics=['accuracy'])
 
+    # model.compile(optimizer=Adam_opt,
+    #                        loss=loss,
+    #                        metrics=['accuracy'])
+
     if plot_architecture:
         from keras.utils.vis_utils import plot_model
         plot_model(model_parallel, to_file=figure_path + '/densenet_arch_test.png', show_shapes=True)
@@ -249,7 +268,7 @@ def run_3d_cnn(model_arch,
                                             batch_size=batch_size,
                                             super_batch_size=super_batch_size,
                                             augmented_data_template=augmented_data_template,
-                                            allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7))
+                                            allowed_transformations=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
             history = Run_Utils.run_cached_aug_data_model(model,
                                                           noise_adaption=False,
                                                           n_steps_per_epoch_train=n_steps_per_epoch_train,
@@ -273,8 +292,22 @@ def run_3d_cnn(model_arch,
                                                           callback=best_wts_callback)
 
 
-### changes to pull on msi
+    ###########
+    # Testing #
+    ###########
 
+    pred_ground_truth, accuracy, precision, recall, \
+    f1_score, cm, fpr, tpr, thresholds, roc_auc = Run_Utils.run_test_model(
+                                                    nb_classes=nb_classes,
+                                                    base_path=base_path,
+                                                    test_indices=test_indices,
+                                                    batch_size=batch_size,
+                                                    n_steps_per_epoch_test=n_steps_per_epoch_test,
+                                                    model_path=model_path,
+                                                    model_name=model_name,
+                                                    optimizer=Adam_opt,
+                                                    labels_test=labels_test,
+                                                    loss=loss)
 
 # split_train_hdf()
 # history = run_real_time_generator_model(data_aug=False)
@@ -293,7 +326,7 @@ if __name__ == '__main__':
                              "[3] Inception, [4] Densnet")
     parser.add_argument('--batch_size', default=2, type=int, help='Batch size')
     parser.add_argument('--nb_epoch', default=200, type=int, help='Number of epochs')
-    parser.add_argument('--depth', type=int, default=7, help='Network depth')
+    parser.add_argument('--depth', type=int, default=5, help='Network depth')
     parser.add_argument('--nb_dense_block', type=int, default=4, help='Number of dense blocks')
     parser.add_argument('--nb_filter', type=int, default=16,
                         help='Initial number of conv filters that growth rate starts from')
@@ -312,6 +345,8 @@ if __name__ == '__main__':
                                                       "models etc. are kept")
     parser.add_argument('--history_filename', type=str, help='pickle filename to dump model training history')
     parser.add_argument('--max_trans', type=int, default=3, help='max number of 3d transformations to do on each image')
+    parser.add_argument('--model_name', type=str, help='max number of 3d transformations to do on each image')
+
     args = parser.parse_args()
 
     print("Network configuration:")
@@ -322,6 +357,20 @@ if __name__ == '__main__':
         cached_data = input("Has the augmented already been augmented and saved? Please enter True or False: ")
         overflow_path = input("Please select the path to your augmented cache data")  # /media/mccoyd2/spaghetti/
 
-    run_3d_cnn(args.model_arch, args.batch_size, args.nb_epoch, args.depth, args.nb_dense_block, args.nb_filter,
-               args.growth_rate, args.dropout_rate, args.learning_rate, args.weight_decay, args.plot_architecture,
-               args.check_point_name, args.data_aug, args.base_path, args.history_filename, args.max_trans)
+    run_3d_cnn(args.model_arch,
+               args.batch_size,
+               args.nb_epoch,
+               args.depth,
+               args.nb_dense_block,
+               args.nb_filter,
+               args.growth_rate,
+               args.dropout_rate,
+               args.learning_rate,
+               args.weight_decay,
+               args.plot_architecture,
+               args.check_point_name,
+               args.data_aug,
+               args.base_path,
+               args.history_filename,
+               args.max_trans,
+               args.model_name)

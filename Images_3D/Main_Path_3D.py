@@ -12,7 +12,7 @@ __status__ = "Under Construction"
 
 from keras.models import Model
 from keras.layers.core import Dense, Dropout, Activation
-from keras.layers.convolutional import Conv3D
+from keras.layers.convolutional import Conv3D, MaxPooling3D
 from keras.layers.pooling import AveragePooling3D
 from keras.layers.pooling import GlobalAveragePooling3D
 from keras.layers import Input, Concatenate
@@ -36,10 +36,10 @@ def conv_block(x, norm_axis, growth_rate, nb_filter, dropout_rate=None, weight_d
     x = BatchNormalization(axis=norm_axis, gamma_regularizer=l2(weight_decay),beta_regularizer=l2(weight_decay))(x)
     x = Activation('relu')(x)
     x = Conv3D(nb_filter, (3, 3, 3), kernel_initializer="he_uniform", padding="same", use_bias=False, kernel_regularizer=l2(weight_decay))(x)
+    x = MaxPooling3D(pool_size=(2, 2, 2))(x)
     if dropout_rate:
         x = Dropout(dropout_rate)(x)
 
-    nb_filter += growth_rate
 
     return x, nb_filter
 
@@ -71,14 +71,15 @@ def Simple_3D_CNN(nb_classes, img_dim, depth, growth_rate, activation, nb_filter
 
     # Add dense blocks
     for layer_idx in range(depth):
-        x, nb_filter = conv_block(x, norm_axis, nb_filter, growth_rate, dropout_rate=dropout_rate, weight_decay=weight_decay)
+        nb_filter += growth_rate
+        x, nb_filter = conv_block(x = x, norm_axis=norm_axis, nb_filter = nb_filter, growth_rate = growth_rate, dropout_rate=dropout_rate, weight_decay=weight_decay)
 
-    x = Dense(nb_classes, activation=activation, kernel_regularizer=l2(weight_decay), bias_regularizer=l2(weight_decay))(x)
-    x = Dense(nb_full_conn, activation=activation, kernel_regularizer=l2(weight_decay), bias_regularizer=l2(weight_decay))(x)
-
-    main_path_model = Model(inputs=[model_input], outputs=[x], name="DenseNet")
+    x = BatchNormalization(axis=norm_axis, gamma_regularizer=l2(weight_decay), beta_regularizer=l2(weight_decay))(x)
+    x = Activation('relu')(x)
+    x = GlobalAveragePooling3D(data_format=K.image_data_format())(x)
+    x = Dense(units=nb_classes, activation=activation, kernel_regularizer=l2(weight_decay), bias_regularizer=l2(weight_decay))(x)
+    main_path_model = Model(inputs=[model_input], outputs=[x], name="MainPathCNN")
 
     return main_path_model
 
 
-main_path_model = Simple_3D_CNN(nb_classes=2, img_dim=(256, 256, 40, 1), depth=5, growth_rate=12, activation='sigmoid', nb_filter=16, dropout_rate=None, weight_decay=1E-4, nb_full_conn=1500)

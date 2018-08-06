@@ -11,20 +11,24 @@ __status__ = "Operational"
 
 import datetime
 import h5py
-from math import ceil
-from pathlib import Path
+import random
 import pickle
 import numpy as np
-from matplotlib import pyplot as plt
+import keras
+import pandas as pd
 
+# custom imports
+import Image_Aug_3D_Utils
+import Preprocessing_Utils
+
+from matplotlib import pyplot as plt
 from keras.callbacks import ModelCheckpoint
 from keras.models import load_model
 from keras.utils import plot_model
 from sklearn.metrics import roc_curve, auc
-import Image_Aug_3D_Utils
-import Preprocessing_Utils
-
-import random
+from math import ceil
+from pathlib import Path
+from keras.models import load_model
 
 def load_valid_data_full(hdf5_path_valid):
     """
@@ -438,29 +442,30 @@ def run_cached_aug_data_model(model,
     return history_inception
 
 
-def a_test_model(n_classes=2):
+def run_test_model(nb_classes,
+                   base_path,
+                   test_indices,
+                   batch_size,
+                   n_steps_per_epoch_test,
+                   model_path,
+                   model_name,
+                   optimizer,
+                   labels_test,
+                   loss):
     """
     recover model and test data from disk, and test the model
+    :param optimizer:
     """
-    images_test, labels_test, data_num_test = load_test_data_full()
-    model = load_model(BASE_PATH + 'models/Inception_hemorrhage_model.hdf5')
-
-    adam_optimizer = keras.optimizers.Adam(
-        lr=0.0001,
-        beta_1=0.9,
-        beta_2=0.999,
-        epsilon=None,
-        decay=0.0,
-        amsgrad=False)
-    model.compile(optimizer=adam_optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+    model = load_model(model_path + model_name)
+    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
     # score the test data
-    test_data_generator = generate_testing_from_hdf5(TEST_INDICES, batch_size=BATCH_SIZE)
-    scores = model.evaluate_generator(test_data_generator, steps=N_STEPS_PER_EPOCH_TEST)
+    test_data_generator = generate_testing_from_hdf5(test_indices, batch_size=batch_size)
+    scores = model.evaluate_generator(test_data_generator, steps=n_steps_per_epoch_test)
 
     # refresh the data generator and generate predictions
-    test_data_generator = generate_testing_from_hdf5(TEST_INDICES, batch_size=batch_size)
-    predictions = model.predict_generator(test_data_generator, steps=N_STEPS_PER_EPOCH_TEST)
+    test_data_generator = generate_testing_from_hdf5(test_indices, batch_size=batch_size)
+    predictions = model.predict_generator(test_data_generator, steps=n_steps_per_epoch_test)
     classes = np.argmax(predictions, axis=1)
 
     pred_ground_truth = np.column_stack((predictions, classes, labels_test))
@@ -479,11 +484,11 @@ def a_test_model(n_classes=2):
         pred_ground_truth['Pos Label'])
     roc_auc = auc(fpr, tpr)
 
-    accuracy, precision, recall, f1_score, cm = vol_inception_utils.calc_metrics(
+    accuracy, precision, recall, f1_score, cm = Preprocessing_Utils.calc_metrics(
         pred_ground_truth['Pos Label'],
         pred_ground_truth['Class Proba'])
 
-    np.savetxt(BASE_PATH + 'results/confusion_matrix.csv', (cm), delimiter=',')
+    np.savetxt(base_path + 'results/confusion_matrix.csv', (cm), delimiter=',')
 
     return pred_ground_truth, accuracy, precision, recall, f1_score, cm, fpr, tpr, thresholds, roc_auc
 
