@@ -29,6 +29,29 @@ from sklearn.metrics import roc_curve, auc
 from math import ceil
 from pathlib import Path
 from keras.models import load_model
+from sklearn.metrics import confusion_matrix
+
+
+def calc_metrics(true, prediction):
+    """
+    calculate accuracy, precision, recall, f1 score and confusion matrix
+
+    Arguments:
+    true -- binary vector indicating true label of the respective image
+    predictions -- binary vector indicating the predicted label of the respective image
+    :returns
+    calculated metrics of vector agreement
+    """
+    cm = confusion_matrix(true, prediction)
+    TN, FP, FN, TP = confusion_matrix(true, prediction).ravel()
+    # print(classification_report(true, prediction))
+    Accuracy = (float(TP) + float(TN)) / (float(TP) + float(TN) + float(FP) + float(FN))
+    Precision = float(TP) / (float(TP) + float(FP))
+    Recall = float(TP) / (float(TP) + float(FN))
+    F1_Score = 2 * float(Precision) * float(Recall) / (float(Precision) + float(Recall))
+
+    return Accuracy, Precision, Recall, F1_Score, cm
+
 
 def load_valid_data_full(hdf5_path_valid):
     """
@@ -258,7 +281,10 @@ def load_augmented_training_data(batch_size=13):
         yield (batch_images, [batch_labels, batch_labels])
 
 
-def generate_testing_from_hdf5(indices, batch_size=15):
+def generate_testing_from_hdf5(indices,
+                               batch_size,
+                               data_num_test,
+                               hdf5_file_test):
     """
     read test data from disk and yield
     """
@@ -274,7 +300,7 @@ def generate_testing_from_hdf5(indices, batch_size=15):
             images_test = hdf5_file_test["test_img"][batch_indices, ...]
             labels_test = hdf5_file_test["test_labels"][batch_indices]
 
-            labels_test = vol_inception_utils.convert_to_one_hot(labels_test, 2).T
+            labels_test = Preprocessing_Utils.convert_to_one_hot(labels_test, 2).T
             # labels_valid = convert_to_one_hot(labels_valid, 2).T
 
             yield (images_test, labels_test)
@@ -346,7 +372,10 @@ def run_real_time_generator_model(data_aug,
                                   base_path,
                                   history_filename,
                                   hdf5_file_train,
-                                  max_transformations):
+                                  max_transformations,
+                                  history_path,
+                                  model_path,
+                                  model_name):
     """
     train network using real-time 3D augmentation and report training time
     detailed: load data by batch size after shuffling from hdf5 file (training hdf5 and augment data before feeding into network)
@@ -375,6 +404,7 @@ def run_real_time_generator_model(data_aug,
         max_transformations=max_transformations,
         verbose=True)
 
+    #real_time_steps_per_epoch = 5
     real_time_steps_per_epoch = int(ceil(float(data_num_train) / batch_size))
 
     start_time = datetime.datetime.now()
@@ -391,8 +421,10 @@ def run_real_time_generator_model(data_aug,
     print('Training time for %d epochs using batch size of %d was %s' \
           % (epochs, batch_size, end_time - start_time))
 
-    with open(base_path + '/history/'+history_filename, 'wb') as file_pi:
+    with open(history_path + history_filename, 'wb') as file_pi:
         pickle.dump(model_history.history, file_pi)
+
+    model.save(model_path + model_name)
 
     return model_history
 
@@ -448,10 +480,14 @@ def run_test_model(nb_classes,
                    batch_size,
                    n_steps_per_epoch_test,
                    model_path,
-                   model_name,
+                   check_point_name,
                    optimizer,
                    labels_test,
-                   loss):
+                   loss,
+                   model_name,
+                   data_num_test,
+                   hdf5_file_test,
+                   results_path):
     """
     recover model and test data from disk, and test the model
     :param optimizer:
@@ -460,15 +496,29 @@ def run_test_model(nb_classes,
     model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
     # score the test data
-    test_data_generator = generate_testing_from_hdf5(test_indices, batch_size=batch_size)
-    scores = model.evaluate_generator(test_data_generator, steps=n_steps_per_epoch_test)
+    test_data_generator = generate_testing_from_hdf5(
+                                            indices=test_indices,
+                                            batch_size=batch_size,
+                                            data_num_test=data_num_test,
+                                            hdf5_file_test=hdf5_file_test)
+
+    scores = model.evaluate_generator(test_data_generator,
+                                      steps=n_steps_per_epoch_test)
 
     # refresh the data generator and generate predictions
-    test_data_generator = generate_testing_from_hdf5(test_indices, batch_size=batch_size)
-    predictions = model.predict_generator(test_data_generator, steps=n_steps_per_epoch_test)
+    test_data_generator = generate_testing_from_hdf5(
+                                            indices=test_indices,
+                                            batch_size=batch_size,
+                                            data_num_test=data_num_test,
+                                            hdf5_file_test=hdf5_file_test)
+
+    predictions = model.predict_generator(test_data_generator,
+                                          steps=n_steps_per_epoch_test)
+
     classes = np.argmax(predictions, axis=1)
 
     pred_ground_truth = np.column_stack((predictions, classes, labels_test))
+
     pred_ground_truth = pd.DataFrame(
         pred_ground_truth,
         columns=[
@@ -479,16 +529,19 @@ def run_test_model(nb_classes,
             'Pos Label'])
 
     # Compute ROC curve and ROC area for each class
-    fpr, tpr, thresholds = roc_curve(
+    fpr, tpr, thresholds=roc_curve(
         pred_ground_truth['Class Proba'],
         pred_ground_truth['Pos Label'])
     roc_auc = auc(fpr, tpr)
 
-    accuracy, precision, recall, f1_score, cm = Preprocessing_Utils.calc_metrics(
+    accuracy, precision, recall, f1_score, cm = calc_metrics(
         pred_ground_truth['Pos Label'],
         pred_ground_truth['Class Proba'])
 
-    np.savetxt(base_path + 'results/confusion_matrix.csv', (cm), delimiter=',')
+    np.savetxt(results_path+'/confusion_matrix.csv', (cm), delimiter=',')
+
+
+
 
     return pred_ground_truth, accuracy, precision, recall, f1_score, cm, fpr, tpr, thresholds, roc_auc
 
@@ -508,13 +561,6 @@ def plot_ROC(fpr, tpr, roc_auc):
     plt.show()
 
 
-def plot_inception_model():
-    """
-    what it says on the tin
-    """
-    plot_model(inception_resnet_v1, to_file="Inception ResNet-v1.png", show_shapes=True)
-
-
 def plot_result_history():
     """
     plot history of the model (i.e. accuracy/loss per epoch 
@@ -522,7 +568,7 @@ def plot_result_history():
     """
 
     # i don't think this needs an rstring for the path? i could be mistaken
-    history = pd.read_pickle(BASE_PATH + "history/trainHistoryDict")
+    history = pd.read_pickle(base_path + "history/trainHistoryDict")
 
     print(history.keys())
     # summarize history for accuracy
@@ -532,7 +578,7 @@ def plot_result_history():
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['train', 'validation'], loc='upper left')
-    plt.savefig(BASE_PATH + '/results/hemorrhage_accuracy.png')
+    plt.savefig(base_path + '/results/hemorrhage_accuracy.png')
     plt.show()
 
     # summarize history for loss
@@ -542,7 +588,7 @@ def plot_result_history():
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
-    plt.savefig(BASE_PATH + '/results/hemorrhage_loss.png')
+    plt.savefig(base_path + '/results/hemorrhage_loss.png')
 
     plt.show()
 
